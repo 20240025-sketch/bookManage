@@ -1,0 +1,9 @@
+curl -X GET https://www.googleapis.com/books/v1/volumes?q=isbn:9784777227242
+
+
+curl -X GET https://api.openbd.jp/v1/get?isbn=9784777227242
+
+
+test
+
+
