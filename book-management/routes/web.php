@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+// SPA用のルート - すべてのリクエストをapp.blade.phpに送信
+Route::get('/{path?}', function () {
+    return view('app');
+})->where('path', '.*');
