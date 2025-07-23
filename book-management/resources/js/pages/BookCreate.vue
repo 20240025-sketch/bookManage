@@ -103,13 +103,31 @@
             <label for="isbn" class="block text-sm font-medium text-gray-700 mb-2">
               ISBN
             </label>
-            <input
-              id="isbn"
-              v-model="form.isbn"
-              type="text"
-              class="form-input"
-              placeholder="ISBN-13形式（978-）"
-            >
+            <div class="relative">
+              <input
+                id="isbn"
+                v-model="form.isbn"
+                @blur="searchByISBN"
+                @keydown.enter.prevent="searchByISBN"
+                type="text"
+                class="form-input pr-20"
+                placeholder="ISBN-13形式（978-）"
+              >
+              <div class="absolute inset-y-0 right-0 flex items-center pr-3">
+                <div v-if="isbnSearching" class="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                <button
+                  v-else
+                  @click="searchByISBN"
+                  type="button"
+                  class="text-blue-600 hover:text-blue-800 text-sm"
+                >
+                  検索
+                </button>
+              </div>
+            </div>
+            <p class="mt-1 text-xs text-gray-500">
+              ISBNを入力後、フィールドから出るか検索ボタンで書籍情報を自動取得
+            </p>
           </div>
 
           <!-- ページ数 -->
@@ -220,6 +238,7 @@ import axios from 'axios';
 const router = useRouter();
 
 const loading = ref(false);
+const isbnSearching = ref(false);
 const errors = ref({});
 const generalError = ref('');
 
@@ -245,6 +264,82 @@ const resetForm = () => {
   });
   errors.value = {};
   generalError.value = '';
+};
+
+// ISBN検索機能
+const searchByISBN = async () => {
+  const isbn = form.isbn?.trim();
+  
+  // ISBNが空または短すぎる場合はスキップ
+  if (!isbn || isbn.length < 10) {
+    return;
+  }
+  
+  // ISBN形式の簡易チェック（10桁または13桁）
+  const cleanISBN = isbn.replace(/[-\s]/g, '');
+  if (!/^\d{10}(\d{3})?$/.test(cleanISBN)) {
+    alert('有効なISBN形式で入力してください（10桁または13桁）');
+    return;
+  }
+  
+  isbnSearching.value = true;
+  
+  try {
+    console.log('Searching for ISBN:', cleanISBN);
+    
+    // Laravel経由で国立国会図書館APIを呼び出し
+    const response = await axios.post('/api/books/search-isbn', {
+      isbn: cleanISBN
+    });
+    
+    console.log('Search response:', response.data);
+    
+    if (response.data.success && response.data.data) {
+      const bookData = response.data.data;
+      
+      // フォームに自動入力（既存の値がある場合は確認）
+      if (bookData.title && (!form.title || confirm('タイトルを上書きしますか？'))) {
+        form.title = bookData.title;
+      }
+      
+      if (bookData.author && (!form.author || confirm('著者を上書きしますか？'))) {
+        form.author = bookData.author;
+      }
+      
+      if (bookData.publisher && (!form.publisher || confirm('出版社を上書きしますか？'))) {
+        form.publisher = bookData.publisher;
+      }
+      
+      if (bookData.published_date && (!form.published_date || confirm('出版日を上書きしますか？'))) {
+        form.published_date = bookData.published_date;
+      }
+      
+      // 成功メッセージ
+      let filledFields = [];
+      if (bookData.title) filledFields.push('タイトル');
+      if (bookData.author) filledFields.push('著者');
+      if (bookData.publisher) filledFields.push('出版社');
+      if (bookData.published_date) filledFields.push('出版日');
+      
+      alert(`書籍情報を自動取得しました！\n取得項目: ${filledFields.join('、')}`);
+      
+    } else {
+      alert('該当する書籍が見つかりませんでした。手動で入力してください。');
+    }
+    
+  } catch (error) {
+    console.error('ISBN検索エラー:', error);
+    
+    if (error.response?.status === 404) {
+      alert('該当する書籍が見つかりませんでした。');
+    } else if (error.response?.status === 422) {
+      alert('ISBNの形式が正しくありません。');
+    } else {
+      alert('書籍情報の取得に失敗しました。手動で入力してください。');
+    }
+  } finally {
+    isbnSearching.value = false;
+  }
 };
 
 const submitForm = async () => {
