@@ -189,7 +189,7 @@
                     {{ book.title }}
                   </router-link>
                 </h3>
-                <p v-if="book.subtitle" class="text-sm text-gray-600 mb-2">{{ book.subtitle }}</p>
+                <p v-if="book.title_transcription" class="text-sm text-gray-600 mb-2">{{ book.title_transcription }}</p>
               </div>
               <span
                 class="inline-flex px-2 py-1 text-xs font-semibold rounded-full ml-4"
@@ -209,10 +209,6 @@
               <div v-if="book.published_date">
                 <span class="font-medium">出版日:</span> {{ formatDate(book.published_date) }}
               </div>
-            </div>
-
-            <div v-if="book.description" class="mt-3">
-              <p class="text-sm text-gray-700 line-clamp-2">{{ book.description }}</p>
             </div>
           </div>
 
@@ -273,7 +269,7 @@ const filteredBooks = computed(() => {
     const searchTerm = filters.searchTitle.toLowerCase();
     result = result.filter(book => 
       book.title.toLowerCase().includes(searchTerm) ||
-      (book.subtitle && book.subtitle.toLowerCase().includes(searchTerm))
+      (book.title_transcription && book.title_transcription.toLowerCase().includes(searchTerm))
     );
   }
 

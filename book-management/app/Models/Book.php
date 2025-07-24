@@ -12,17 +12,26 @@ class Book extends Model
 
     protected $fillable = [
         'title',
+        'title_transcription',
         'author',
         'publisher',
-        'publication_year',
+        'published_date',
         'isbn',
-        'category',
+        'pages',
+        'price',
+        'ndc',
         'reading_status',
     ];
 
     protected $casts = [
         'reading_status' => ReadingStatus::class,
-        'publication_year' => 'integer',
+        'published_date' => 'date',
+        'pages' => 'integer',
+        'price' => 'decimal:2',
+    ];
+
+    protected $attributes = [
+        'reading_status' => 'unread', // デフォルトは「未読」
     ];
 
     // 検索スコープ
@@ -30,17 +39,9 @@ class Book extends Model
     {
         return $query->where(function ($q) use ($search) {
             $q->where('title', 'like', "%{$search}%")
-              ->orWhere('author', 'like', "%{$search}%");
+              ->orWhere('author', 'like', "%{$search}%")
+              ->orWhere('publisher', 'like', "%{$search}%");
         });
-    }
-
-    // カテゴリフィルタスコープ
-    public function scopeCategory($query, $category)
-    {
-        if ($category) {
-            return $query->where('category', $category);
-        }
-        return $query;
     }
 
     // 読書状況フィルタスコープ

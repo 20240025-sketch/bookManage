@@ -27,7 +27,7 @@
         <div class="flex items-center justify-between">
           <div>
             <h1 class="text-2xl font-bold text-gray-900">{{ book.title }}</h1>
-            <p v-if="book.subtitle" class="mt-1 text-lg text-gray-600">{{ book.subtitle }}</p>
+            <p v-if="book.title_transcription" class="mt-1 text-lg text-gray-600">{{ book.title_transcription }}</p>
           </div>
           <div class="flex items-center space-x-3">
             <router-link
@@ -85,6 +85,16 @@
                 <dd class="mt-1 text-sm text-gray-900">{{ book.pages }}ページ</dd>
               </div>
               
+              <div v-if="book.price">
+                <dt class="text-sm font-medium text-gray-500">価格</dt>
+                <dd class="mt-1 text-sm text-gray-900">{{ Math.floor(book.price) }}円</dd>
+              </div>
+              
+              <div v-if="book.ndc">
+                <dt class="text-sm font-medium text-gray-500">NDC分類</dt>
+                <dd class="mt-1 text-sm text-gray-900">{{ book.ndc }}</dd>
+              </div>
+              
               <div>
                 <dt class="text-sm font-medium text-gray-500">読書状況</dt>
                 <dd class="mt-1">
@@ -95,14 +105,6 @@
                 </dd>
               </div>
             </dl>
-
-            <!-- 説明・メモ -->
-            <div v-if="book.description" class="mt-6">
-              <h3 class="text-sm font-medium text-gray-500 mb-2">説明・メモ</h3>
-              <div class="text-sm text-gray-900 whitespace-pre-wrap bg-gray-50 p-3 rounded-md">
-                {{ book.description }}
-              </div>
-            </div>
           </div>
         </div>
 

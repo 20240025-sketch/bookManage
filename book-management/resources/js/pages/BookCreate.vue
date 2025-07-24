@@ -40,17 +40,17 @@
             <p v-if="errors.title" class="mt-1 text-sm text-red-600">{{ errors.title[0] }}</p>
           </div>
 
-          <!-- サブタイトル -->
+          <!-- タイトルのヨミ -->
           <div class="md:col-span-2">
-            <label for="subtitle" class="block text-sm font-medium text-gray-700 mb-2">
-              サブタイトル
+            <label for="title_transcription" class="block text-sm font-medium text-gray-700 mb-2">
+              タイトルのヨミ
             </label>
             <input
-              id="subtitle"
-              v-model="form.subtitle"
+              id="title_transcription"
+              v-model="form.title_transcription"
               type="text"
               class="form-input"
-              placeholder="サブタイトル（任意）"
+              placeholder="タイトルのヨミ（任意）"
             >
           </div>
 
@@ -106,6 +106,7 @@
             <div class="relative">
               <input
                 id="isbn"
+                ref="isbnInputRef"
                 v-model="form.isbn"
                 @blur="searchByISBN"
                 @keydown.enter.prevent="searchByISBN"
@@ -145,15 +146,44 @@
             >
           </div>
 
+          <!-- 価格 -->
+          <div>
+            <label for="price" class="block text-sm font-medium text-gray-700 mb-2">
+              価格
+            </label>
+            <input
+              id="price"
+              v-model.number="form.price"
+              type="number"
+              min="0"
+              step="1"
+              class="form-input"
+              placeholder="価格（円）"
+            >
+          </div>
+
+          <!-- 日本十進分類法 -->
+          <div>
+            <label for="ndc" class="block text-sm font-medium text-gray-700 mb-2">
+              NDC分類
+            </label>
+            <input
+              id="ndc"
+              v-model="form.ndc"
+              type="text"
+              class="form-input"
+              placeholder="例: 410"
+            >
+          </div>
+
           <!-- 読書状況 -->
           <div>
             <label for="reading_status" class="block text-sm font-medium text-gray-700 mb-2">
-              読書状況 <span class="text-red-500">*</span>
+              読書状況
             </label>
             <select
               id="reading_status"
               v-model="form.reading_status"
-              required
               class="form-select"
               :class="{ 'border-red-500': errors.reading_status }"
             >
@@ -164,20 +194,6 @@
             </select>
             <p v-if="errors.reading_status" class="mt-1 text-sm text-red-600">{{ errors.reading_status[0] }}</p>
           </div>
-        </div>
-
-        <!-- 説明・メモ -->
-        <div>
-          <label for="description" class="block text-sm font-medium text-gray-700 mb-2">
-            説明・メモ
-          </label>
-          <textarea
-            id="description"
-            v-model="form.description"
-            rows="4"
-            class="form-input"
-            placeholder="書籍の説明、感想、メモなど"
-          ></textarea>
         </div>
 
         <!-- フォームアクション -->
@@ -231,7 +247,7 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue';
+import { ref, reactive, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
 
@@ -239,24 +255,27 @@ const router = useRouter();
 
 const loading = ref(false);
 const isbnSearching = ref(false);
+const lastSearchedISBN = ref(''); // 最後に検索したISBNを記録
 const errors = ref({});
 const generalError = ref('');
+const isbnInputRef = ref(null); // ISBNフィールドへの参照
 
 const form = reactive({
   title: '',
-  subtitle: '',
+  title_transcription: '',
   author: '',
   publisher: '',
   published_date: '',
   isbn: '',
   pages: null,
-  reading_status: '',
-  description: ''
+  price: null,
+  ndc: '',
+  reading_status: ''
 });
 
 const resetForm = () => {
   Object.keys(form).forEach(key => {
-    if (key === 'pages') {
+    if (key === 'pages' || key === 'price') {
       form[key] = null;
     } else {
       form[key] = '';
@@ -264,7 +283,15 @@ const resetForm = () => {
   });
   errors.value = {};
   generalError.value = '';
+  lastSearchedISBN.value = ''; // 検索履歴もクリア
 };
+
+// コンポーネントマウント時にISBNフィールドにフォーカス
+onMounted(() => {
+  if (isbnInputRef.value) {
+    isbnInputRef.value.focus();
+  }
+});
 
 // ISBN検索機能
 const searchByISBN = async () => {
@@ -278,10 +305,21 @@ const searchByISBN = async () => {
   // ISBN形式の簡易チェック（10桁または13桁）
   const cleanISBN = isbn.replace(/[-\s]/g, '');
   if (!/^\d{10}(\d{3})?$/.test(cleanISBN)) {
-    alert('有効なISBN形式で入力してください（10桁または13桁）');
+    console.warn('無効なISBN形式:', cleanISBN);
     return;
   }
   
+  // 既に検索済みのISBNの場合はスキップ
+  if (lastSearchedISBN.value === cleanISBN) {
+    return;
+  }
+  
+  // 既に検索中の場合はスキップ
+  if (isbnSearching.value) {
+    return;
+  }
+  
+  lastSearchedISBN.value = cleanISBN;
   isbnSearching.value = true;
   
   try {
@@ -302,6 +340,10 @@ const searchByISBN = async () => {
         form.title = bookData.title;
       }
       
+      if (bookData.title_transcription && (!form.title_transcription || confirm('タイトルのヨミを上書きしますか？'))) {
+        form.title_transcription = bookData.title_transcription;
+      }
+      
       if (bookData.author && (!form.author || confirm('著者を上書きしますか？'))) {
         form.author = bookData.author;
       }
@@ -314,14 +356,30 @@ const searchByISBN = async () => {
         form.published_date = bookData.published_date;
       }
       
+      if (bookData.price && (!form.price || confirm('価格を上書きしますか？'))) {
+        form.price = bookData.price;
+      }
+      
+      if (bookData.pages && (!form.pages || confirm('ページ数を上書きしますか？'))) {
+        form.pages = bookData.pages;
+      }
+      
+      if (bookData.ndc && (!form.ndc || confirm('NDC分類を上書きしますか？'))) {
+        form.ndc = bookData.ndc;
+      }
+      
       // 成功メッセージ
       let filledFields = [];
       if (bookData.title) filledFields.push('タイトル');
+      if (bookData.title_transcription) filledFields.push('タイトルのヨミ');
       if (bookData.author) filledFields.push('著者');
       if (bookData.publisher) filledFields.push('出版社');
       if (bookData.published_date) filledFields.push('出版日');
+      if (bookData.pages) filledFields.push('ページ数');
+      if (bookData.price) filledFields.push('価格');
+      if (bookData.ndc) filledFields.push('NDC分類');
       
-      alert(`書籍情報を自動取得しました！\n取得項目: ${filledFields.join('、')}`);
+      console.log(`書籍情報を自動取得しました！取得項目: ${filledFields.join('、')}`);
       
     } else {
       alert('該当する書籍が見つかりませんでした。手動で入力してください。');
@@ -333,9 +391,9 @@ const searchByISBN = async () => {
     if (error.response?.status === 404) {
       alert('該当する書籍が見つかりませんでした。');
     } else if (error.response?.status === 422) {
-      alert('ISBNの形式が正しくありません。');
+      console.warn('ISBNの形式が正しくありません:', cleanISBN);
     } else {
-      alert('書籍情報の取得に失敗しました。手動で入力してください。');
+      console.error('書籍情報の取得に失敗しました:', error.message || error);
     }
   } finally {
     isbnSearching.value = false;

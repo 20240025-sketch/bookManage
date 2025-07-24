@@ -64,17 +64,17 @@
               />
             </div>
 
-            <!-- サブタイトル -->
+            <!-- タイトルのヨミ -->
             <div class="md:col-span-2">
-              <label for="subtitle" class="block text-sm font-medium text-gray-700 mb-1">
-                サブタイトル
+              <label for="title_transcription" class="block text-sm font-medium text-gray-700 mb-1">
+                タイトルのヨミ
               </label>
               <input
                 type="text"
-                id="subtitle"
-                v-model="form.subtitle"
+                id="title_transcription"
+                v-model="form.title_transcription"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="サブタイトル（任意）"
+                placeholder="タイトルのヨミ（任意）"
               />
             </div>
 
@@ -142,23 +142,52 @@
               <input
                 type="number"
                 id="pages"
-                v-model="form.pages"
+                v-model.number="form.pages"
                 min="1"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="ページ数を入力"
               />
             </div>
 
+            <!-- 価格 -->
+            <div>
+              <label for="price" class="block text-sm font-medium text-gray-700 mb-1">
+                価格
+              </label>
+              <input
+                type="number"
+                id="price"
+                v-model.number="form.price"
+                min="0"
+                step="1"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="価格（円）"
+              />
+            </div>
+
+            <!-- 日本十進分類法 -->
+            <div>
+              <label for="ndc" class="block text-sm font-medium text-gray-700 mb-1">
+                NDC分類
+              </label>
+              <input
+                type="text"
+                id="ndc"
+                v-model="form.ndc"
+                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="例: 410"
+              />
+            </div>
+
             <!-- 読書状況 -->
             <div>
               <label for="reading_status" class="block text-sm font-medium text-gray-700 mb-1">
-                読書状況 <span class="text-red-500">*</span>
+                読書状況
               </label>
               <select
                 id="reading_status"
                 v-model="form.reading_status"
                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
               >
                 <option value="">読書状況を選択</option>
                 <option value="unread">未読</option>
@@ -167,20 +196,6 @@
               </select>
             </div>
           </div>
-        </div>
-
-        <!-- 説明・メモ -->
-        <div>
-          <label for="description" class="block text-sm font-medium text-gray-700 mb-1">
-            説明・メモ
-          </label>
-          <textarea
-            id="description"
-            v-model="form.description"
-            rows="6"
-            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="この書籍についてのメモや感想を入力してください"
-          ></textarea>
         </div>
 
         <!-- ボタン -->
@@ -237,14 +252,15 @@ const errors = ref([]);
 
 const form = reactive({
   title: '',
-  subtitle: '',
+  title_transcription: '',
   author: '',
   publisher: '',
   published_date: '',
   isbn: '',
   pages: null,
-  reading_status: '',
-  description: ''
+  price: null,
+  ndc: '',
+  reading_status: ''
 });
 
 const originalForm = ref({});
@@ -256,7 +272,17 @@ const loadBook = async () => {
     
     // フォームに既存データを設定
     Object.keys(form).forEach(key => {
-      form[key] = book[key] || '';
+      if (key === 'pages' || key === 'price') {
+        // 数値フィールドは数値として設定、nullの場合はnullのまま
+        form[key] = book[key] !== null && book[key] !== undefined ? Number(book[key]) : null;
+      } else if (key === 'published_date' && book[key]) {
+        // 日付フィールドはYYYY-MM-DD形式に変換
+        const date = new Date(book[key]);
+        form[key] = date.toISOString().split('T')[0];
+      } else {
+        // その他のフィールドは文字列として設定、nullの場合は空文字
+        form[key] = book[key] || '';
+      }
     });
     
     // 元データを保存（リセット用）
@@ -280,9 +306,6 @@ const updateBook = async () => {
     }
     if (!form.author?.trim()) {
       errors.value.push('著者は必須です');
-    }
-    if (!form.reading_status) {
-      errors.value.push('読書状況を選択してください');
     }
     
     if (errors.value.length > 0) {
@@ -326,7 +349,13 @@ const updateBook = async () => {
 const resetForm = () => {
   if (confirm('フォームをリセットしてもよろしいですか？\n入力した変更内容が失われます。')) {
     Object.keys(form).forEach(key => {
-      form[key] = originalForm.value[key] || '';
+      if (key === 'pages' || key === 'price') {
+        // 数値フィールドは元の数値をそのまま設定
+        form[key] = originalForm.value[key];
+      } else {
+        // その他のフィールドは文字列として設定
+        form[key] = originalForm.value[key] || '';
+      }
     });
     errors.value = [];
   }

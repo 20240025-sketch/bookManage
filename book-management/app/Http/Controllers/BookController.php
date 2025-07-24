@@ -30,15 +30,26 @@ class BookController extends Controller
     {
         $validated = $request->validate([
             'title' => 'required|string|max:255',
-            'subtitle' => 'nullable|string|max:255',
+            'title_transcription' => 'nullable|string|max:255',
             'author' => 'required|string|max:255',
             'publisher' => 'nullable|string|max:255',
             'published_date' => 'nullable|date',
             'isbn' => 'nullable|string|max:20',
             'pages' => 'nullable|integer|min:1',
-            'reading_status' => ['required', Rule::enum(ReadingStatus::class)],
-            'description' => 'nullable|string',
+            'price' => 'nullable|numeric|min:0',
+            'ndc' => 'nullable|string|max:10',
+            'reading_status' => ['nullable', Rule::enum(ReadingStatus::class)],
         ]);
+
+        // reading_statusが空の場合はデフォルト値を設定
+        if (empty($validated['reading_status'])) {
+            $validated['reading_status'] = 'unread';
+        }
+
+        // reading_statusが空の場合はデフォルト値を設定
+        if (empty($validated['reading_status'])) {
+            $validated['reading_status'] = 'unread';
+        }
 
         $book = Book::create($validated);
 
@@ -66,14 +77,15 @@ class BookController extends Controller
     {
         $validated = $request->validate([
             'title' => 'sometimes|required|string|max:255',
-            'subtitle' => 'sometimes|nullable|string|max:255',
+            'title_transcription' => 'sometimes|nullable|string|max:255',
             'author' => 'sometimes|required|string|max:255',
             'publisher' => 'sometimes|nullable|string|max:255',
             'published_date' => 'sometimes|nullable|date',
             'isbn' => 'sometimes|nullable|string|max:20',
             'pages' => 'sometimes|nullable|integer|min:1',
+            'price' => 'sometimes|nullable|numeric|min:0',
+            'ndc' => 'sometimes|nullable|string|max:10',
             'reading_status' => ['sometimes', 'required', Rule::enum(ReadingStatus::class)],
-            'description' => 'sometimes|nullable|string',
         ]);
 
         $book->update($validated);
@@ -145,21 +157,36 @@ class BookController extends Controller
             if (isset($xml->channel) && isset($xml->channel->item) && count($xml->channel->item) > 0) {
                 $item = $xml->channel->item[0];
                 
-                // XML名前空間を登録
-                $xml->registerXPathNamespace('dc', 'http://purl.org/dc/elements/1.1/');
-                $xml->registerXPathNamespace('dcterms', 'http://purl.org/dc/terms/');
-                $xml->registerXPathNamespace('dcndl', 'http://ndl.go.jp/dcndl/terms/');
+                // XML名前空間を登録（$itemに対して）
+                $item->registerXPathNamespace('dc', 'http://purl.org/dc/elements/1.1/');
+                $item->registerXPathNamespace('dcterms', 'http://purl.org/dc/terms/');
+                $item->registerXPathNamespace('dcndl', 'http://ndl.go.jp/dcndl/terms/');
+                
+                // デバッグ用: itemの詳細構造をログ出力
+                \Log::info('Item structure:', ['item' => json_encode($item)]);
                 
                 $bookData = [
                     'title' => null,
+                    'title_transcription' => null,
                     'author' => null,
                     'publisher' => null,
-                    'published_date' => null
+                    'published_date' => null,
+                    'price' => null,
+                    'pages' => null,
+                    'ndc' => null
                 ];
 
                 // タイトルの取得
                 if (isset($item->title)) {
                     $bookData['title'] = trim((string)$item->title);
+                }
+
+                // タイトルのヨミの取得（dcndl:titleTranscription）
+                $dcndlElements = $item->children('http://ndl.go.jp/dcndl/terms/');
+                \Log::info('DCNDL Elements:', ['dcndl' => json_encode($dcndlElements)]);
+                
+                if (isset($dcndlElements->titleTranscription)) {
+                    $bookData['title_transcription'] = trim((string)$dcndlElements->titleTranscription);
                 }
 
                 // 著者の取得
@@ -174,6 +201,126 @@ class BookController extends Controller
                 $dcElements = $item->children('http://purl.org/dc/elements/1.1/');
                 if (isset($dcElements->publisher)) {
                     $bookData['publisher'] = trim((string)$dcElements->publisher);
+                }
+
+                // 価格の取得（dcndl:price）
+                if (isset($dcndlElements->price)) {
+                    $priceText = trim((string)$dcndlElements->price);
+                    // "1500円" のような形式から数値を抽出
+                    if (preg_match('/(\d+)/', $priceText, $matches)) {
+                        $bookData['price'] = (float)$matches[1];
+                    }
+                }
+
+                // ページ数の取得（dc:extent から数値を抽出）
+                \Log::info('Starting pages extraction from dc:extent...');
+                
+                // 方法1: XPathで直接dc:extent要素を検索
+                $extentNodes = $item->xpath('.//dc:extent');
+                if (!empty($extentNodes)) {
+                    foreach ($extentNodes as $extentNode) {
+                        $extentText = trim((string)$extentNode);
+                        \Log::info('Found dc:extent via XPath:', ['extent' => $extentText]);
+                        
+                        // "166p", "166ページ", "166頁" などの形式から数値を抽出
+                        if (preg_match('/(\d+)\s*[pページ頁]?/u', $extentText, $matches)) {
+                            $bookData['pages'] = (int)$matches[1];
+                            \Log::info('Pages extracted successfully:', ['extent' => $extentText, 'pages' => $bookData['pages']]);
+                            break;
+                        }
+                    }
+                }
+                
+                // 方法2: DCメタデータ要素から直接アクセス（フォールバック）
+                if (empty($bookData['pages']) && isset($dcElements->extent)) {
+                    $extentText = trim((string)$dcElements->extent);
+                    \Log::info('DC extent direct access:', ['extent' => $extentText]);
+                    
+                    if (preg_match('/(\d+)\s*[pページ頁]?/u', $extentText, $matches)) {
+                        $bookData['pages'] = (int)$matches[1];
+                        \Log::info('Pages found via direct access:', ['extent' => $extentText, 'pages' => $bookData['pages']]);
+                    }
+                }
+                
+                // 方法3: すべてのDC要素を順次チェック（最終フォールバック）
+                if (empty($bookData['pages'])) {
+                    \Log::info('Checking all DC elements for extent...');
+                    foreach ($dcElements as $elementName => $element) {
+                        if ($elementName === 'extent') {
+                            $extentText = trim((string)$element);
+                            \Log::info('Found dc:extent in element iteration:', ['extent' => $extentText]);
+                            
+                            if (preg_match('/(\d+)\s*[pページ頁]?/u', $extentText, $matches)) {
+                                $bookData['pages'] = (int)$matches[1];
+                                \Log::info('Pages found via element iteration:', ['extent' => $extentText, 'pages' => $bookData['pages']]);
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                if (empty($bookData['pages'])) {
+                    \Log::warning('Pages not found in dc:extent elements');
+                }
+
+                // 日本十進分類法の取得（dc:subject[@xsi:type="dcndl:NDC10"]）
+                \Log::info('Attempting NDC retrieval...');
+                
+                // XSI名前空間も登録
+                $item->registerXPathNamespace('xsi', 'http://www.w3.org/2001/XMLSchema-instance');
+                
+                // 方法1: XPathで xsi:type="dcndl:NDC10" の dc:subject を検索
+                $ndcNodes = $item->xpath('//dc:subject[@xsi:type="dcndl:NDC10"]');
+                if (!empty($ndcNodes)) {
+                    $bookData['ndc'] = trim((string)$ndcNodes[0]);
+                    \Log::info('NDC found via XPath dc:subject[@xsi:type="dcndl:NDC10"]:', ['ndc' => $bookData['ndc']]);
+                }
+                
+                // 方法2: dc:subject要素の属性をチェック
+                if (empty($bookData['ndc']) && isset($dcElements->subject)) {
+                    foreach ($dcElements->subject as $subject) {
+                        $attributes = $subject->attributes('http://www.w3.org/2001/XMLSchema-instance');
+                        if (isset($attributes->type) && (string)$attributes->type === 'dcndl:NDC10') {
+                            $bookData['ndc'] = trim((string)$subject);
+                            \Log::info('NDC found via attribute check:', ['ndc' => $bookData['ndc']]);
+                            break;
+                        }
+                    }
+                }
+                
+                // 方法3: すべてのdc:subject要素をチェックして属性をログ出力
+                if (empty($bookData['ndc']) && isset($dcElements->subject)) {
+                    foreach ($dcElements->subject as $index => $subject) {
+                        $subjectText = trim((string)$subject);
+                        $allAttributes = [];
+                        
+                        // 全ての名前空間の属性を取得
+                        foreach ($subject->attributes() as $attrName => $attrValue) {
+                            $allAttributes[$attrName] = (string)$attrValue;
+                        }
+                        foreach ($subject->attributes('http://www.w3.org/2001/XMLSchema-instance') as $attrName => $attrValue) {
+                            $allAttributes["xsi:$attrName"] = (string)$attrValue;
+                        }
+                        
+                        \Log::info("DC Subject element $index:", [
+                            'text' => $subjectText,
+                            'attributes' => $allAttributes
+                        ]);
+                        
+                        // NDC10パターンマッチング
+                        if (isset($allAttributes['xsi:type']) && $allAttributes['xsi:type'] === 'dcndl:NDC10') {
+                            $bookData['ndc'] = $subjectText;
+                            \Log::info('NDC found via detailed attribute check:', ['ndc' => $bookData['ndc']]);
+                            break;
+                        }
+                        
+                        // フォールバック: NDCで始まるテキスト
+                        if (preg_match('/^NDC[:\s]*(\d+)/', $subjectText, $matches)) {
+                            $bookData['ndc'] = $matches[1];
+                            \Log::info('NDC found via text pattern fallback:', ['ndc' => $bookData['ndc']]);
+                            break;
+                        }
+                    }
                 }
 
                 // 出版日の取得（DCTermsから）
