@@ -28,211 +28,29 @@
 
     <!-- 編集フォーム -->
     <div v-else class="bg-white rounded-lg shadow p-6">
-      <form @submit.prevent="updateBook" class="space-y-6">
-        <!-- エラーメッセージ -->
-        <div v-if="errors.length > 0" class="bg-red-50 border-l-4 border-red-400 p-4">
-          <div class="flex">
-            <svg class="w-5 h-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
-              <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
-            </svg>
-            <div class="ml-3">
-              <p class="text-sm text-red-700 font-medium">入力エラーがあります：</p>
-              <ul class="mt-1 text-sm text-red-700 list-disc list-inside">
-                <li v-for="error in errors" :key="error">{{ error }}</li>
-              </ul>
-            </div>
+      <BookForm
+        v-model:form="form"
+        :errors="validationErrors"
+        :loading="loading"
+        submit-label="更新"
+        @submit="updateBook"
+        @reset="resetForm"
+      />
+
+      <!-- エラーメッセージ -->
+      <div v-if="errors.length > 0" class="mt-4 bg-red-50 border-l-4 border-red-400 p-4">
+        <div class="flex">
+          <svg class="w-5 h-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"/>
+          </svg>
+          <div class="ml-3">
+            <p class="text-sm text-red-700 font-medium">入力エラーがあります：</p>
+            <ul class="mt-1 text-sm text-red-700 list-disc list-inside">
+              <li v-for="error in errors" :key="error">{{ error }}</li>
+            </ul>
           </div>
         </div>
-
-        <!-- 基本情報 -->
-        <div>
-          <h2 class="text-lg font-semibold text-gray-900 mb-4">基本情報</h2>
-          
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <!-- タイトル -->
-            <div class="md:col-span-2">
-              <label for="title" class="block text-sm font-medium text-gray-700 mb-1">
-                タイトル <span class="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                id="title"
-                v-model="form.title"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="書籍のタイトルを入力"
-                required
-              />
-            </div>
-
-            <!-- タイトルのヨミ -->
-            <div class="md:col-span-2">
-              <label for="title_transcription" class="block text-sm font-medium text-gray-700 mb-1">
-                タイトルのヨミ
-              </label>
-              <input
-                type="text"
-                id="title_transcription"
-                v-model="form.title_transcription"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="タイトルのヨミ（任意）"
-              />
-            </div>
-
-            <!-- 著者 -->
-            <div>
-              <label for="author" class="block text-sm font-medium text-gray-700 mb-1">
-                著者 <span class="text-red-500">*</span>
-              </label>
-              <input
-                type="text"
-                id="author"
-                v-model="form.author"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="著者名を入力"
-                required
-              />
-            </div>
-
-            <!-- 出版社 -->
-            <div>
-              <label for="publisher" class="block text-sm font-medium text-gray-700 mb-1">
-                出版社
-              </label>
-              <input
-                type="text"
-                id="publisher"
-                v-model="form.publisher"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="出版社名を入力"
-              />
-            </div>
-
-            <!-- 出版日 -->
-            <div>
-              <label for="published_date" class="block text-sm font-medium text-gray-700 mb-1">
-                出版日
-              </label>
-              <input
-                type="date"
-                id="published_date"
-                v-model="form.published_date"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              />
-            </div>
-
-            <!-- ISBN -->
-            <div>
-              <label for="isbn" class="block text-sm font-medium text-gray-700 mb-1">
-                ISBN
-              </label>
-              <input
-                type="text"
-                id="isbn"
-                v-model="form.isbn"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="ISBN番号を入力"
-              />
-            </div>
-
-            <!-- ページ数 -->
-            <div>
-              <label for="pages" class="block text-sm font-medium text-gray-700 mb-1">
-                ページ数
-              </label>
-              <input
-                type="number"
-                id="pages"
-                v-model.number="form.pages"
-                min="1"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="ページ数を入力"
-              />
-            </div>
-
-            <!-- 価格 -->
-            <div>
-              <label for="price" class="block text-sm font-medium text-gray-700 mb-1">
-                価格
-              </label>
-              <input
-                type="number"
-                id="price"
-                v-model.number="form.price"
-                min="0"
-                step="1"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="価格（円）"
-              />
-            </div>
-
-            <!-- 日本十進分類法 -->
-            <div>
-              <label for="ndc" class="block text-sm font-medium text-gray-700 mb-1">
-                NDC分類
-              </label>
-              <input
-                type="text"
-                id="ndc"
-                v-model="form.ndc"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="例: 410"
-              />
-            </div>
-
-            <!-- 読書状況 -->
-            <div>
-              <label for="reading_status" class="block text-sm font-medium text-gray-700 mb-1">
-                読書状況
-              </label>
-              <select
-                id="reading_status"
-                v-model="form.reading_status"
-                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              >
-                <option value="">読書状況を選択</option>
-                <option value="unread">未読</option>
-                <option value="reading">読書中</option>
-                <option value="read">読了</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <!-- ボタン -->
-        <div class="flex items-center justify-between pt-4 border-t">
-          <router-link
-            :to="`/books/${$route.params.id}`"
-            class="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md"
-          >
-            キャンセル
-          </router-link>
-          
-          <div class="flex items-center space-x-3">
-            <button
-              type="button"
-              @click="resetForm"
-              class="bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-2 rounded-md"
-            >
-              リセット
-            </button>
-            
-            <button
-              type="submit"
-              :disabled="loading"
-              class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-2 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <span v-if="loading" class="flex items-center">
-                <svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                  <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                更新中...
-              </span>
-              <span v-else>更新</span>
-            </button>
-          </div>
-        </div>
-      </form>
+      </div>
     </div>
   </div>
 </template>
@@ -241,6 +59,7 @@
 import { ref, reactive, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
+import BookForm from '@/components/books/BookForm.vue';
 
 const route = useRoute();
 const router = useRouter();
@@ -249,6 +68,7 @@ const initialLoading = ref(true);
 const loading = ref(false);
 const loadError = ref('');
 const errors = ref([]);
+const validationErrors = ref({});
 
 const form = reactive({
   title: '',
@@ -260,7 +80,11 @@ const form = reactive({
   pages: null,
   price: null,
   ndc: '',
-  reading_status: ''
+  reading_status: '',
+  acceptance_date: '',
+  acceptance_type: '',
+  acceptance_source: '',
+  discard: ''
 });
 
 const originalForm = ref({});
@@ -275,7 +99,7 @@ const loadBook = async () => {
       if (key === 'pages' || key === 'price') {
         // 数値フィールドは数値として設定、nullの場合はnullのまま
         form[key] = book[key] !== null && book[key] !== undefined ? Number(book[key]) : null;
-      } else if (key === 'published_date' && book[key]) {
+      } else if ((key === 'published_date' || key === 'acceptance_date') && book[key]) {
         // 日付フィールドはYYYY-MM-DD形式に変換
         const date = new Date(book[key]);
         form[key] = date.toISOString().split('T')[0];
@@ -297,6 +121,7 @@ const loadBook = async () => {
 
 const updateBook = async () => {
   errors.value = [];
+  validationErrors.value = {};
   loading.value = true;
   
   try {
@@ -336,8 +161,8 @@ const updateBook = async () => {
   } catch (err) {
     if (err.response?.status === 422 && err.response?.data?.errors) {
       // バリデーションエラー
-      const validationErrors = err.response.data.errors;
-      errors.value = Object.values(validationErrors).flat();
+      validationErrors.value = err.response.data.errors;
+      errors.value = Object.values(err.response.data.errors).flat();
     } else {
       errors.value = [err.response?.data?.message || '更新に失敗しました'];
     }
@@ -358,6 +183,7 @@ const resetForm = () => {
       }
     });
     errors.value = [];
+    validationErrors.value = {};
   }
 };
 

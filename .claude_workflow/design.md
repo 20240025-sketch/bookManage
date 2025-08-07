@@ -117,18 +117,25 @@ export const useBookStore = defineStore('books', {
 ```
 
 ## 3. データベース設計（実装完了）
-### 3.1 テーブル設計 ✅ Phase 2完了
+### 3.1 テーブル設計 ✅ Phase 2完了・Phase 3拡張
 #### books テーブル
 ```sql
 CREATE TABLE books (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     title VARCHAR(255) NOT NULL,
+    title_transcription VARCHAR(255) NULL,        -- タイトルのヨミ
     author VARCHAR(255) NOT NULL,
     publisher VARCHAR(255) NULL,
-    publication_year INTEGER NULL,
+    published_date DATE NULL,                     -- 出版日
     isbn VARCHAR(20) NULL,
-    category VARCHAR(100) NULL,
+    pages INTEGER NULL,                           -- ページ数
+    price DECIMAL(8,2) NULL,                     -- 価格
+    ndc VARCHAR(10) NULL,                        -- 日本十進分類法（NDC10→NDC9→NDC8の順で優先取得。dc:subject[@xsi:type="dcndl:NDC10|NDC9|NDC8"] いずれか最初に見つかった値を格納）
     reading_status VARCHAR(20) NOT NULL DEFAULT 'unread',
+    acceptance_date DATE NULL,                    -- 受け入れ日 ✨ 新規追加
+    acceptance_type VARCHAR(255) NULL,           -- 受け入れ種別 ✨ 新規追加
+    acceptance_source VARCHAR(255) NULL,         -- 受け入れ元 ✨ 新規追加
+    discard VARCHAR(255) NULL,                   -- 廃棄情報 ✨ 新規追加
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -163,22 +170,29 @@ enum ReadingStatus: string
 | PUT | /api/books/{id} | 書籍更新 | ✅ 完了 |
 | DELETE | /api/books/{id} | 書籍削除 | ✅ 完了 |
 
-### 4.2 APIレスポンス形式（確認済み）
+### 4.2 APIレスポンス形式（確認済み・Phase 3拡張）
 ```json
 {
     "data": [
         {
             "id": 1,
             "title": "Laravel実践入門",
+            "title_transcription": "ララベルジッセンニュウモン",
             "author": "山田太郎",
             "publisher": "技術書出版",
-            "publication_year": 2023,
+            "published_date": "2023-01-15",
             "isbn": "978-4-123456-78-9",
-            "category": "技術書",
+            "pages": 350,
+            "price": "3200.00",
+            "ndc": "007.64",
             "reading_status": "read",
             "reading_status_label": "既読",
+            "acceptance_date": "2025-08-01",
+            "acceptance_type": "購入",
+            "acceptance_source": "書店",
+            "discard": null,
             "created_at": "2025-07-23T10:00:00Z",
-            "updated_at": "2025-07-23T10:00:00Z"
+            "updated_at": "2025-08-07T12:00:00Z"
         }
     ],
     "links": { /* ページネーションリンク */ },

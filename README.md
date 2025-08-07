@@ -1,9 +1,9 @@
 # bookManagement
 蔵書管理
 
-Github Copilot Agentは、.github/copilot-instructions.md に書かれた内容をデフォルトでプロンプトに組み込みます。
+Github Copilot Agentは、.git/copilot-instructions.md に書かれた内容をデフォルトでプロンプトに組み込みます。
 したがって、コーディングルールやドキュメントルールを書いておくとよいでしょう。
-*********************** .github/copilot-instructions.md **************************
+*********************** .git/copilot-instructions.md **************************
 ## 解説の際は、すべて日本語で説明すること
 
 ## タスク実行の4段階フロー

@@ -16,22 +16,30 @@
 ## 2. 機能要件（Phase 3実装版）
 
 ### 2.1 書籍管理機能
-#### 2.1.1 書籍登録 ✅ バックエンド完了 → ⏳ フロントエンド実装予定
-- **API実装状況**: BookController::store() ✅ 完了
+#### 2.1.1 書籍登録 ✅ バックエンド完了 → ⏳ フロントエンド実装予定（拡張）
+- **API実装状況**: BookController::store() ✅ 完了・拡張済み
 - **フロントエンド実装予定**: BookCreatePage.vue + BookForm.vue
 - **機能要件**:
   - タイトル（必須）
+  - タイトルのヨミ（任意）
   - 著者（必須）
   - 出版社（任意）
-  - 出版年（任意、1000-2100年）
+  - 出版日（任意、日付形式）
   - ISBN（任意）
-  - カテゴリ（任意）
+  - ページ数（任意、数値）
+  - 価格（任意、decimal形式）
+  - 日本十進分類法（任意）
   - 読書状況（必須、enum: unread/reading/read）
+  - **受け入れ日（任意、日付形式）✨ 新規追加**
+  - **受け入れ種別（任意、例：購入、寄贈、交換等）✨ 新規追加**
+  - **受け入れ元（任意、例：書店、図書館、個人等）✨ 新規追加**
+  - **廃棄情報（任意、例：廃棄予定、廃棄済み等）✨ 新規追加**
 - **UI要件**:
   - リアルタイムバリデーション表示
   - エラーメッセージの日本語化
   - 自動保存機能（下書き）
   - モバイル対応フォーム
+  - **受け入れ・廃棄情報セクションの追加**
 
 #### 2.1.2 書籍一覧表示 ✅ バックエンド完了 → ⏳ フロントエンド実装予定
 - **API実装状況**: BookController::index() ✅ 動作確認済み
@@ -198,16 +206,23 @@
 
 ## 5. データ要件（実装済み）✅
 
-### 5.1 書籍データ（実装確認済み）
+### 5.1 書籍データ（実装確認済み・Phase 3拡張）
 ```php
 id: integer (Primary Key, Auto Increment) ✅
 title: string(255, Required) ✅
+title_transcription: string(255, Nullable) ✅     // タイトルのヨミ
 author: string(255, Required) ✅
 publisher: string(255, Nullable) ✅
-publication_year: integer(Nullable, 1000-2100) ✅
+published_date: date(Nullable) ✅                 // 出版日
 isbn: string(20, Nullable) ✅
-category: string(100, Nullable) ✅
+pages: integer(Nullable) ✅                       // ページ数
+price: decimal(8,2, Nullable) ✅                  // 価格
+ndc: string(10, Nullable) ✅                      // 日本十進分類法（NDC10→NDC9→NDC8の順で優先取得。dc:subject[@xsi:type="dcndl:NDC10|NDC9|NDC8"] いずれか最初に見つかった値を格納）
 reading_status: enum('unread','reading','read', Required) ✅
+acceptance_date: date(Nullable) ✨               // 受け入れ日【新規追加】
+acceptance_type: string(255, Nullable) ✨        // 受け入れ種別【新規追加】
+acceptance_source: string(255, Nullable) ✨      // 受け入れ元【新規追加】
+discard: string(255, Nullable) ✨                // 廃棄情報【新規追加】
 created_at: timestamp ✅
 updated_at: timestamp ✅
 ```

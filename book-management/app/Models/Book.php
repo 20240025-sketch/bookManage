@@ -21,11 +21,16 @@ class Book extends Model
         'price',
         'ndc',
         'reading_status',
+        'acceptance_date',
+        'acceptance_type',
+        'acceptance_source',
+        'discard',
     ];
 
     protected $casts = [
         'reading_status' => ReadingStatus::class,
         'published_date' => 'date',
+        'acceptance_date' => 'date',
         'pages' => 'integer',
         'price' => 'decimal:2',
     ];

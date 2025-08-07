@@ -4,8 +4,12 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\BookController;
 
-Route::apiResource('books', BookController::class);
+// 個別ルートを先に定義
 Route::post('books/search-isbn', [BookController::class, 'searchByISBN']);
+Route::get('books/search-by-isbn', [BookController::class, 'searchByISBN']);
+
+// リソースルートを後に定義
+Route::apiResource('books', BookController::class);
 
 // テスト用エンドポイント
 Route::get('test-ndl/{isbn}', function($isbn) {

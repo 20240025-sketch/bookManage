@@ -106,6 +106,38 @@
               </div>
             </dl>
           </div>
+
+          <!-- 受け入れ・廃棄情報 -->
+          <div v-if="hasAcceptanceInfo" class="bg-white rounded-lg shadow p-6 mt-6">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">受け入れ・廃棄情報</h2>
+            
+            <dl class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div v-if="book.acceptance_date">
+                <dt class="text-sm font-medium text-gray-500">受け入れ日</dt>
+                <dd class="mt-1 text-sm text-gray-900">{{ formatDate(book.acceptance_date) }}</dd>
+              </div>
+              
+              <div v-if="book.acceptance_type">
+                <dt class="text-sm font-medium text-gray-500">受け入れ種別</dt>
+                <dd class="mt-1 text-sm text-gray-900">{{ book.acceptance_type }}</dd>
+              </div>
+              
+              <div v-if="book.acceptance_source">
+                <dt class="text-sm font-medium text-gray-500">受け入れ元</dt>
+                <dd class="mt-1 text-sm text-gray-900">{{ book.acceptance_source }}</dd>
+              </div>
+              
+              <div v-if="book.discard">
+                <dt class="text-sm font-medium text-gray-500">廃棄情報</dt>
+                <dd class="mt-1">
+                  <span class="inline-flex px-2 py-1 text-xs font-medium rounded-full"
+                        :class="getDiscardStatusClass(book.discard)">
+                    {{ book.discard }}
+                  </span>
+                </dd>
+              </div>
+            </dl>
+          </div>
         </div>
 
         <!-- サイドバー情報 -->
@@ -169,7 +201,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
 
@@ -179,6 +211,16 @@ const router = useRouter();
 const book = ref(null);
 const loading = ref(true);
 const error = ref('');
+
+// 受け入れ情報があるかどうか
+const hasAcceptanceInfo = computed(() => {
+  return book.value && (
+    book.value.acceptance_date || 
+    book.value.acceptance_type || 
+    book.value.acceptance_source || 
+    book.value.discard
+  );
+});
 
 const loadBook = async () => {
   try {
@@ -249,6 +291,23 @@ const getStatusClass = (status) => {
     case 'reading':
       return 'bg-blue-100 text-blue-800';
     case 'read':
+      return 'bg-green-100 text-green-800';
+    default:
+      return 'bg-gray-100 text-gray-800';
+  }
+};
+
+const getDiscardStatusClass = (status) => {
+  if (!status) return '';
+  
+  switch (status) {
+    case '廃棄予定':
+      return 'bg-orange-100 text-orange-800';
+    case '廃棄済み':
+      return 'bg-red-100 text-red-800';
+    case '譲渡予定':
+      return 'bg-blue-100 text-blue-800';
+    case '譲渡済み':
       return 'bg-green-100 text-green-800';
     default:
       return 'bg-gray-100 text-gray-800';
