@@ -1,9 +1,3 @@
-# bookManagement
-蔵書管理
-
-Github Copilot Agentは、.github/copilot-instructions.md に書かれた内容をデフォルトでプロンプトに組み込みます。
-したがって、コーディングルールやドキュメントルールを書いておくとよいでしょう。
-*********************** .github/copilot-instructions.md **************************
 ## 解説の際は、すべて日本語で説明すること
 
 ## タスク実行の4段階フロー
@@ -47,5 +41,3 @@ Github Copilot Agentは、.github/copilot-instructions.md に書かれた内容�
 - エラーは解決してから次へ進む
 - エラーを無視して次のステップに進まない
 - 指示にない機能を勝手に追加しない
-
-***************************************
