@@ -1,5 +1,24 @@
 ## 解説の際は、すべて日本語で説明すること
 
+## 慎重に考え、私が与えた特定のタスクのみに取り組み、できる限りコードの変更を少なくして、最も簡潔でエレガントな解決策を実行してください。
+
+## AIアシスタントへの注意事項
+
+When working on this codebase:
+
+1. **Always run `php -l [PHPファイル名]` and fix warnings** before suggesting code
+2. **Test your changes** - don't assume code works
+3. **Preserve existing behavior** unless explicitly asked to change it
+4. **Follow PSR-1, PSR-2 and PSR-12*** - basically follow other PSRs, too. But ignore the PSRs abandoned.
+5. **Maintain predictable defaults** - user should never be surprised
+6. **Document any new features** in both code and README
+7. **Consider edge cases** - empty states, missing files, permissions
+
+Remember: This tool is about speed and simplicity.
+Every feature should make context switching faster or easier, not more complex.
+**Predictability beats cleverness.**
+
+
 ## タスク実行の4段階フロー
 
 ### 1. 要件定義

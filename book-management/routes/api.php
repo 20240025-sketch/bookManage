@@ -7,6 +7,7 @@ use App\Http\Controllers\BookController;
 // 個別ルートを先に定義
 Route::post('books/search-isbn', [BookController::class, 'searchByISBN']);
 Route::get('books/search-by-isbn', [BookController::class, 'searchByISBN']);
+Route::get('books/pdf', [BookController::class, 'exportPdf']);
 
 // リソースルートを後に定義
 Route::apiResource('books', BookController::class);

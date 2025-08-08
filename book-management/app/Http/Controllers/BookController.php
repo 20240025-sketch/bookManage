@@ -371,4 +371,130 @@ class BookController extends Controller
         // For debugging, if no processing is done, a dummy response can be returned
         return response()->json(['title' => 'サンプルタイトル', 'author' => 'サンプル著者']);
     }
+
+    /**
+     * Export books list to PDF
+     */
+    public function exportPdf(Request $request)
+    {
+        // Get all books or filtered books
+        $query = Book::query();
+        
+        // Apply filters if provided
+        if ($request->has('search')) {
+            $query->search($request->search);
+        }
+        
+        if ($request->has('reading_status')) {
+            $query->readingStatus($request->reading_status);
+        }
+        
+        $books = $query->orderBy('acceptance_date', 'desc')
+                      ->orderBy('title', 'asc')
+                      ->get();
+
+        // Create new PDF document
+        $pdf = new \TCPDF('L', 'mm', 'A4', true, 'UTF-8', false);
+
+        // Set document information
+        $pdf->SetCreator('蔵書管理システム');
+        $pdf->SetAuthor('蔵書管理システム');
+        $pdf->SetTitle('書籍一覧');
+        $pdf->SetSubject('書籍一覧');
+
+        // Remove default header/footer
+        $pdf->setPrintHeader(false);
+        $pdf->setPrintFooter(false);
+
+        // Set margins
+        $pdf->SetMargins(10, 10, 10);
+        $pdf->SetAutoPageBreak(true, 10);
+
+        // Add a page
+        $pdf->AddPage();
+
+        // Set font for Japanese text (use built-in font that supports Japanese)
+        $pdf->SetFont('dejavusans', '', 9);
+
+        // Title
+        $pdf->SetFont('dejavusans', 'B', 14);
+        $pdf->Cell(0, 10, '書籍一覧', 0, 1, 'C');
+        $pdf->Ln(5);
+
+        // Table header
+        $pdf->SetFont('dejavusans', 'B', 8);
+        $pdf->SetFillColor(230, 230, 230);
+        
+        $headerWidths = [20, 40, 25, 20, 18, 12, 15, 20, 15, 15, 15];
+        $headers = ['受入年月日', 'タイトル', '著者', '出版社', '出版日', 'ページ数', '受入種別', '受け入れ元', '価格', 'NDC分類', 'ヨミ頭文字'];
+        
+        foreach ($headers as $i => $header) {
+            $pdf->Cell($headerWidths[$i], 8, $header, 1, 0, 'C', true);
+        }
+        $pdf->Ln();
+
+        // Table data
+        $pdf->SetFont('dejavusans', '', 7);
+        $pdf->SetFillColor(255, 255, 255);
+
+        foreach ($books as $book) {
+            // Calculate row height based on content
+            $rowHeight = 6;
+            
+            // Get first character of title transcription
+            $titleFirstChar = '';
+            if ($book->title_transcription) {
+                $titleFirstChar = mb_substr($book->title_transcription, 0, 1);
+            }
+
+            $data = [
+                $book->acceptance_date ? $book->acceptance_date->format('Y/m/d') : '',
+                mb_strimwidth($book->title, 0, 50, '...'),
+                mb_strimwidth($book->author, 0, 30, '...'),
+                mb_strimwidth($book->publisher ?: '', 0, 25, '...'),
+                $book->published_date ? $book->published_date->format('Y/m/d') : '',
+                $book->pages ?: '',
+                mb_strimwidth($book->acceptance_type ?: '', 0, 20, '...'),
+                mb_strimwidth($book->acceptance_source ?: '', 0, 25, '...'),
+                $book->price ? number_format($book->price) . '円' : '',
+                $book->ndc ?: '',
+                $titleFirstChar
+            ];
+
+            foreach ($data as $i => $value) {
+                $pdf->Cell($headerWidths[$i], $rowHeight, $value, 1, 0, 'L');
+            }
+            $pdf->Ln();
+
+            // Check if we need a new page
+            if ($pdf->GetY() > 180) {
+                $pdf->AddPage();
+                
+                // Repeat header on new page
+                $pdf->SetFont('dejavusans', 'B', 8);
+                $pdf->SetFillColor(230, 230, 230);
+                
+                foreach ($headers as $i => $header) {
+                    $pdf->Cell($headerWidths[$i], 8, $header, 1, 0, 'C', true);
+                }
+                $pdf->Ln();
+                
+                $pdf->SetFont('dejavusans', '', 7);
+                $pdf->SetFillColor(255, 255, 255);
+            }
+        }
+
+        // Add footer with timestamp and page number
+        $pdf->SetFont('dejavusans', '', 8);
+        $pdf->SetY(-15);
+        $pdf->Cell(0, 10, '出力日時: ' . now()->format('Y年m月d日 H:i'), 0, 0, 'L');
+        $pdf->Cell(0, 10, 'ページ: ' . $pdf->getAliasNumPage() . '/' . $pdf->getAliasNbPages(), 0, 0, 'R');
+
+        // Output PDF
+        $filename = '書籍一覧_' . now()->format('Ymd_His') . '.pdf';
+        
+        return response($pdf->Output($filename, 'S'))
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
+    }
 }

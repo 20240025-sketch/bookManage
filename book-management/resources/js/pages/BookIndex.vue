@@ -5,14 +5,30 @@
       <div class="flex items-center justify-between">
         <div>
           <h1 class="text-2xl font-bold text-gray-900">書籍管理</h1>
-          <p class="text-gray-600">あなたの本棚を管理しましょう</p>
+          <p class="text-gray-600">あなたの本棚を管理しましょう。</p>
         </div>
-        <router-link
-          to="/books/create"
-          class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md"
-        >
-          新しい書籍を追加
-        </router-link>
+        <div class="flex space-x-3">
+          <button
+            @click="exportPdf"
+            :disabled="pdfExporting"
+            class="bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white px-4 py-2 rounded-md flex items-center"
+          >
+            <svg v-if="!pdfExporting" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+            </svg>
+            <svg v-else class="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            {{ pdfExporting ? 'PDF出力中...' : 'PDF出力' }}
+          </button>
+          <router-link
+            to="/books/create"
+            class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md"
+          >
+            新しい書籍を追加
+          </router-link>
+        </div>
       </div>
     </div>
 
@@ -238,6 +254,7 @@ import axios from 'axios';
 
 const books = ref([]);
 const loading = ref(true);
+const pdfExporting = ref(false);
 const error = ref('');
 
 const filters = reactive({
@@ -352,6 +369,50 @@ const getStatusLabel = (status) => {
 
 const formatDate = (dateString) => {
   return new Date(dateString).toLocaleDateString('ja-JP');
+};
+
+const exportPdf = async () => {
+  try {
+    pdfExporting.value = true;
+    
+    // Build query parameters based on current filters
+    const params = new URLSearchParams();
+    if (filters.searchTitle) {
+      params.append('search', filters.searchTitle);
+    }
+    if (filters.searchAuthor) {
+      params.append('search', filters.searchAuthor);
+    }
+    if (filters.readingStatus) {
+      params.append('reading_status', filters.readingStatus);
+    }
+
+    const response = await axios.get('/api/books/pdf', {
+      params: Object.fromEntries(params),
+      responseType: 'blob'
+    });
+
+    // Create blob and download
+    const blob = new Blob([response.data], { type: 'application/pdf' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    
+    // Generate filename with timestamp
+    const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, '-');
+    link.download = `書籍一覧_${timestamp}.pdf`;
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+
+  } catch (error) {
+    console.error('PDF export failed:', error);
+    alert('PDF出力に失敗しました。しばらくしてから再度お試しください。');
+  } finally {
+    pdfExporting.value = false;
+  }
 };
 
 onMounted(() => {
