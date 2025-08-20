@@ -9,6 +9,8 @@ use App\Http\Requests\UpdateBookRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Validation\Rule;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Exception;
 
 class BookController extends Controller
 {
@@ -375,126 +377,335 @@ class BookController extends Controller
     /**
      * Export books list to PDF
      */
-    public function exportPdf(Request $request)
+    public function exportPdf(Request $request): Response
     {
-        // Get all books or filtered books
-        $query = Book::query();
-        
-        // Apply filters if provided
-        if ($request->has('search')) {
-            $query->search($request->search);
-        }
-        
-        if ($request->has('reading_status')) {
-            $query->readingStatus($request->reading_status);
-        }
-        
-        $books = $query->orderBy('acceptance_date', 'desc')
-                      ->orderBy('title', 'asc')
-                      ->get();
+        try {
+            // 書籍データを取得
+            $books = Book::all();
 
-        // Create new PDF document
-        $pdf = new \TCPDF('L', 'mm', 'A4', true, 'UTF-8', false);
+            // TCPDFのインスタンスを作成（UTF-8エンコーディングを明示的に指定）
+            $pdf = new \TCPDF('L', 'mm', 'A4', true, 'UTF-8', false);
 
-        // Set document information
-        $pdf->SetCreator('蔵書管理システム');
-        $pdf->SetAuthor('蔵書管理システム');
-        $pdf->SetTitle('書籍一覧');
-        $pdf->SetSubject('書籍一覧');
+            // ドキュメント情報を設定
+            $pdf->SetCreator('蔵書管理システム');
+            $pdf->SetAuthor('蔵書管理システム');
+            $pdf->SetTitle('書籍一覧');
+            $pdf->SetSubject('書籍一覧PDF');
 
-        // Remove default header/footer
-        $pdf->setPrintHeader(false);
-        $pdf->setPrintFooter(false);
-
-        // Set margins
-        $pdf->SetMargins(10, 10, 10);
-        $pdf->SetAutoPageBreak(true, 10);
-
-        // Add a page
-        $pdf->AddPage();
-
-        // Set font for Japanese text (use built-in font that supports Japanese)
-        $pdf->SetFont('dejavusans', '', 9);
-
-        // Title
-        $pdf->SetFont('dejavusans', 'B', 14);
-        $pdf->Cell(0, 10, '書籍一覧', 0, 1, 'C');
-        $pdf->Ln(5);
-
-        // Table header
-        $pdf->SetFont('dejavusans', 'B', 8);
-        $pdf->SetFillColor(230, 230, 230);
-        
-        $headerWidths = [20, 40, 25, 20, 18, 12, 15, 20, 15, 15, 15];
-        $headers = ['受入年月日', 'タイトル', '著者', '出版社', '出版日', 'ページ数', '受入種別', '受け入れ元', '価格', 'NDC分類', 'ヨミ頭文字'];
-        
-        foreach ($headers as $i => $header) {
-            $pdf->Cell($headerWidths[$i], 8, $header, 1, 0, 'C', true);
-        }
-        $pdf->Ln();
-
-        // Table data
-        $pdf->SetFont('dejavusans', '', 7);
-        $pdf->SetFillColor(255, 255, 255);
-
-        foreach ($books as $book) {
-            // Calculate row height based on content
-            $rowHeight = 6;
+            // カスタム日本語フォント設定
+            $fontname = null;
+            $fontPath = public_path('seieiIPAexMincho.ttf');
             
-            // Get first character of title transcription
-            $titleFirstChar = '';
-            if ($book->title_transcription) {
-                $titleFirstChar = mb_substr($book->title_transcription, 0, 1);
+            try {
+                // フォントファイルの存在を確認
+                if (file_exists($fontPath)) {
+                    // カスタムフォントを追加
+                    $fontname = \TCPDF_FONTS::addTTFfont($fontPath, 'TrueTypeUnicode', '', 96);
+                    \Log::info('Custom font loaded successfully', ['fontname' => $fontname]);
+                } else {
+                    \Log::warning('Font file not found', ['path' => $fontPath]);
+                }
+            } catch (Exception $e) {
+                \Log::error('Error loading custom font', ['error' => $e->getMessage()]);
             }
 
-            $data = [
-                $book->acceptance_date ? $book->acceptance_date->format('Y/m/d') : '',
-                mb_strimwidth($book->title, 0, 50, '...'),
-                mb_strimwidth($book->author, 0, 30, '...'),
-                mb_strimwidth($book->publisher ?: '', 0, 25, '...'),
-                $book->published_date ? $book->published_date->format('Y/m/d') : '',
-                $book->pages ?: '',
-                mb_strimwidth($book->acceptance_type ?: '', 0, 20, '...'),
-                mb_strimwidth($book->acceptance_source ?: '', 0, 25, '...'),
-                $book->price ? number_format($book->price) . '円' : '',
-                $book->ndc ?: '',
-                $titleFirstChar
+            // フォント設定（カスタムフォント優先、フォールバック設定）
+            if ($fontname) {
+                $pdf->SetFont($fontname, '', 9);
+            } else {
+                // フォールバック：TCPDFでサポートされているCJK（中日韓）フォントを使用
+                try {
+                    // CJK用のdejavusansフォントを使用（日本語サポートあり）
+                    $pdf->SetFont('dejavusans', '', 9);
+                } catch (Exception $e) {
+                    try {
+                        // freeserifフォント（Unicode対応）
+                        $pdf->SetFont('freeserif', '', 9);
+                    } catch (Exception $e) {
+                        try {
+                            // cid0jp フォント（日本語専用）
+                            $pdf->SetFont('cid0jp', '', 9);
+                        } catch (Exception $e) {
+                            // 最後の手段としてHelvetica（ASCII文字のみ）
+                            $pdf->SetFont('helvetica', '', 9);
+                        }
+                    }
+                }
+            }
+
+            // デフォルトのヘッダー・フッターを無効化
+            $pdf->setPrintHeader(false);
+            $pdf->setPrintFooter(false);
+
+            // マージンを設定
+            $pdf->SetMargins(10, 15, 10);
+            $pdf->SetAutoPageBreak(true, 20);
+
+            // ページを追加
+            $pdf->AddPage();
+
+            // タイトルを追加
+            if ($fontname) {
+                $pdf->SetFont($fontname, 'B', 16);
+            } else {
+                try {
+                    $pdf->SetFont('dejavusans', 'B', 16);
+                } catch (Exception $e) {
+                    try {
+                        $pdf->SetFont('freeserif', 'B', 16);
+                    } catch (Exception $e) {
+                        $pdf->SetFont('helvetica', 'B', 16);
+                    }
+                }
+            }
+            $pdf->Cell(0, 10, '書籍一覧', 0, 1, 'C');
+            $pdf->Ln(5);
+
+            // 出力日時を追加
+            if ($fontname) {
+                $pdf->SetFont($fontname, '', 10);
+            } else {
+                try {
+                    $pdf->SetFont('dejavusans', '', 10);
+                } catch (Exception $e) {
+                    try {
+                        $pdf->SetFont('freeserif', '', 10);
+                    } catch (Exception $e) {
+                        $pdf->SetFont('helvetica', '', 10);
+                    }
+                }
+            }
+            $pdf->Cell(0, 8, '出力日時: ' . date('Y年m月d日 H:i'), 0, 1, 'R');
+            $pdf->Ln(3);
+
+            // テーブルヘッダー
+            if ($fontname) {
+                $pdf->SetFont($fontname, 'B', 8);
+            } else {
+                try {
+                    $pdf->SetFont('dejavusans', 'B', 8);
+                } catch (Exception $e) {
+                    try {
+                        $pdf->SetFont('freeserif', 'B', 8);
+                    } catch (Exception $e) {
+                        $pdf->SetFont('helvetica', 'B', 8);
+                    }
+                }
+            }
+            $pdf->SetFillColor(240, 240, 240);
+            
+            $headers = [
+                '受入年月日' => 25,
+                'タイトル' => 50,
+                '著者' => 35,
+                '出版社' => 30,
+                '出版日' => 20,
+                'ページ数' => 15,
+                '受入種別' => 20,
+                '受け入れ元' => 25,
+                '価格' => 15,
+                'NDC分類' => 15,
+                'ヨミ頭文字' => 15
             ];
 
-            foreach ($data as $i => $value) {
-                $pdf->Cell($headerWidths[$i], $rowHeight, $value, 1, 0, 'L');
+            foreach ($headers as $header => $width) {
+                $pdf->Cell($width, 8, $header, 1, 0, 'C', true);
             }
             $pdf->Ln();
 
-            // Check if we need a new page
-            if ($pdf->GetY() > 180) {
-                $pdf->AddPage();
-                
-                // Repeat header on new page
-                $pdf->SetFont('dejavusans', 'B', 8);
-                $pdf->SetFillColor(230, 230, 230);
-                
-                foreach ($headers as $i => $header) {
-                    $pdf->Cell($headerWidths[$i], 8, $header, 1, 0, 'C', true);
+            // データ行
+            if ($fontname) {
+                $pdf->SetFont($fontname, '', 7);
+            } else {
+                try {
+                    $pdf->SetFont('dejavusans', '', 7);
+                } catch (Exception $e) {
+                    try {
+                        $pdf->SetFont('freeserif', '', 7);
+                    } catch (Exception $e) {
+                        $pdf->SetFont('helvetica', '', 7);
+                    }
                 }
-                $pdf->Ln();
-                
-                $pdf->SetFont('dejavusans', '', 7);
-                $pdf->SetFillColor(255, 255, 255);
             }
+            $pdf->SetFillColor(255, 255, 255);
+
+            foreach ($books as $book) {
+                // 改ページチェック
+                if ($pdf->GetY() > 170) {
+                    $pdf->AddPage();
+                    
+                    // ヘッダーを再表示
+                    if ($fontname) {
+                        $pdf->SetFont($fontname, 'B', 8);
+                    } else {
+                        try {
+                            $pdf->SetFont('dejavusans', 'B', 8);
+                        } catch (Exception $e) {
+                            try {
+                                $pdf->SetFont('freeserif', 'B', 8);
+                            } catch (Exception $e) {
+                                $pdf->SetFont('helvetica', 'B', 8);
+                            }
+                        }
+                    }
+                    $pdf->SetFillColor(240, 240, 240);
+                    
+                    foreach ($headers as $header => $width) {
+                        $pdf->Cell($width, 8, $header, 1, 0, 'C', true);
+                    }
+                    $pdf->Ln();
+                    
+                    if ($fontname) {
+                        $pdf->SetFont($fontname, '', 7);
+                    } else {
+                        try {
+                            $pdf->SetFont('dejavusans', '', 7);
+                        } catch (Exception $e) {
+                            try {
+                                $pdf->SetFont('freeserif', '', 7);
+                            } catch (Exception $e) {
+                                $pdf->SetFont('helvetica', '', 7);
+                            }
+                        }
+                    }
+                    $pdf->SetFillColor(255, 255, 255);
+                }
+
+                // タイトルのヨミの頭文字を取得
+                $yomiInitial = $book->title_transcription ? mb_substr($book->title_transcription, 0, 1, 'UTF-8') : '';
+
+                // 各列のデータを準備
+                $rowData = [
+                    $book->acceptance_date ? $book->acceptance_date->format('Y/m/d') : '',
+                    $book->title ?: '',
+                    $book->author ?: '',
+                    $book->publisher ?: '',
+                    $book->published_date ? $book->published_date->format('Y/m/d') : '',
+                    $book->pages ?: '',
+                    $book->acceptance_type ?: '',
+                    $book->acceptance_source ?: '',
+                    $book->price ? number_format($book->price) . '円' : '',
+                    $book->ndc ?: '',
+                    $yomiInitial
+                ];
+
+                // 必要な行数を計算（長いテキストがある列を基準）
+                $requiredLines = 1;
+                $colWidths = array_values($headers);
+                
+                // タイトル、著者、出版社の長さをチェック
+                $longTextColumns = [1, 2, 3]; // タイトル、著者、出版社のインデックス
+                foreach ($longTextColumns as $colIndex) {
+                    $text = $rowData[$colIndex];
+                    if (!empty($text)) {
+                        $width = $colWidths[$colIndex];
+                        $textWidth = $pdf->GetStringWidth($text);
+                        $lines = ceil($textWidth / ($width - 2)); // マージンを考慮
+                        $requiredLines = max($requiredLines, $lines);
+                    }
+                }
+                
+                // 最大3行に制限し、行の高さを計算
+                $requiredLines = min($requiredLines, 3);
+                $cellHeight = $requiredLines * 4;
+
+                // 現在のY位置を記録
+                $startY = $pdf->GetY();
+                $startX = $pdf->GetX();
+
+                // 各列のデータを出力（手動でセルを描画して高さを完全統一）
+                $colIndex = 0;
+                $currentX = $startX; // X座標をリセット
+                
+                foreach ($rowData as $data) {
+                    $width = $colWidths[$colIndex];
+                    
+                    // 文字エンコーディングを確実にする
+                    if (!mb_check_encoding($data, 'UTF-8')) {
+                        $data = mb_convert_encoding($data, 'UTF-8', 'auto');
+                    }
+                    
+                    // セルの枠線を描画
+                    $pdf->Rect($currentX, $startY, $width, $cellHeight);
+                    
+                    // テキストの処理と配置
+                    if (in_array($colIndex, [1, 2, 3]) && !empty($data)) {
+                        // 長いテキストの列（タイトル、著者、出版社）: 複数行対応
+                        $lines = [];
+                        $words = mb_str_split($data, 1, 'UTF-8');
+                        $currentLine = '';
+                        
+                        foreach ($words as $char) {
+                            $testLine = $currentLine . $char;
+                            $testWidth = $pdf->GetStringWidth($testLine);
+                            
+                            if ($testWidth > ($width - 2) && !empty($currentLine)) {
+                                $lines[] = $currentLine;
+                                $currentLine = $char;
+                            } else {
+                                $currentLine = $testLine;
+                            }
+                        }
+                        
+                        if (!empty($currentLine)) {
+                            $lines[] = $currentLine;
+                        }
+                        
+                        // 最大行数に制限
+                        $lines = array_slice($lines, 0, $requiredLines);
+                        
+                        // 各行を描画
+                        foreach ($lines as $lineIndex => $line) {
+                            $lineY = $startY + 1 + ($lineIndex * 4);
+                            $pdf->SetXY($currentX + 1, $lineY);
+                            $pdf->Cell($width - 2, 3, $line, 0, 0, 'L', false);
+                        }
+                    } else {
+                        // その他の列: 単行、中央揃え
+                        $textY = $startY + ($cellHeight / 2) - 1.5; // 垂直中央に配置
+                        $pdf->SetXY($currentX, $textY);
+                        $pdf->Cell($width, 3, $data, 0, 0, 'C', false);
+                    }
+                    
+                    $currentX += $width;
+                    $colIndex++;
+                }
+                
+                // 次の行に移動（Y座標のみ更新、X座標は左端にリセット）
+                $pdf->SetXY($startX, $startY + $cellHeight);
+            }
+
+            // フッター（ページ番号）
+            $pdf->SetY(-15);
+            if ($fontname) {
+                $pdf->SetFont($fontname, '', 8);
+            } else {
+                try {
+                    $pdf->SetFont('dejavusans', '', 8);
+                } catch (Exception $e) {
+                    try {
+                        $pdf->SetFont('freeserif', '', 8);
+                    } catch (Exception $e) {
+                        $pdf->SetFont('helvetica', '', 8);
+                    }
+                }
+            }
+            $pdf->Cell(0, 8, 'ページ ' . $pdf->getAliasNumPage() . ' / ' . $pdf->getAliasNbPages(), 0, 0, 'C');
+
+            // PDFを出力
+            $filename = '書籍一覧_' . date('Ymd_His') . '.pdf';
+            
+            return response($pdf->Output($filename, 'S'), 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+                'Content-Length' => strlen($pdf->Output($filename, 'S')),
+            ]);
+
+        } catch (\Exception $e) {
+            \Log::error('PDF出力エラー: ' . $e->getMessage());
+            return response()->json([
+                'error' => 'PDF出力中にエラーが発生しました: ' . $e->getMessage()
+            ], 500);
         }
-
-        // Add footer with timestamp and page number
-        $pdf->SetFont('dejavusans', '', 8);
-        $pdf->SetY(-15);
-        $pdf->Cell(0, 10, '出力日時: ' . now()->format('Y年m月d日 H:i'), 0, 0, 'L');
-        $pdf->Cell(0, 10, 'ページ: ' . $pdf->getAliasNumPage() . '/' . $pdf->getAliasNbPages(), 0, 0, 'R');
-
-        // Output PDF
-        $filename = '書籍一覧_' . now()->format('Ymd_His') . '.pdf';
-        
-        return response($pdf->Output($filename, 'S'))
-            ->header('Content-Type', 'application/pdf')
-            ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
     }
 }
