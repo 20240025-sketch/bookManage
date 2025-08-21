@@ -94,16 +94,6 @@
                 <dt class="text-sm font-medium text-gray-500">NDC分類</dt>
                 <dd class="mt-1 text-sm text-gray-900">{{ book.ndc }}</dd>
               </div>
-              
-              <div>
-                <dt class="text-sm font-medium text-gray-500">読書状況</dt>
-                <dd class="mt-1">
-                  <span class="inline-flex px-2 py-1 text-xs font-semibold rounded-full"
-                        :class="getStatusClass(book.reading_status)">
-                    {{ getStatusLabel(book.reading_status) }}
-                  </span>
-                </dd>
-              </div>
             </dl>
           </div>
 
@@ -163,37 +153,6 @@
               </div>
             </dl>
           </div>
-
-          <!-- アクション -->
-          <div class="bg-white rounded-lg shadow p-6">
-            <h2 class="text-lg font-semibold text-gray-900 mb-4">クイックアクション</h2>
-            
-            <div class="space-y-3">
-              <button
-                v-if="book.reading_status !== 'reading'"
-                @click="updateStatus('reading')"
-                class="w-full bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md text-sm"
-              >
-                読書開始
-              </button>
-              
-              <button
-                v-if="book.reading_status !== 'read'"
-                @click="updateStatus('read')"
-                class="w-full bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-md text-sm"
-              >
-                読了にする
-              </button>
-              
-              <button
-                v-if="book.reading_status !== 'unread'"
-                @click="updateStatus('unread')"
-                class="w-full bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded-md text-sm"
-              >
-                未読に戻す
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     </div>
@@ -233,39 +192,6 @@ const loadBook = async () => {
   }
 };
 
-const updateStatus = async (status) => {
-  try {
-    console.log('Updating status to:', status);
-    console.log('Book ID:', book.value.id);
-    console.log('Request payload:', { reading_status: status });
-    
-    const response = await axios.patch(`/api/books/${book.value.id}`, {
-      reading_status: status
-    });
-    
-    console.log('Update response:', response.data);
-    
-    book.value.reading_status = status;
-    
-    // 成功通知（将来的に通知システムを追加）
-    alert(`読書状況を「${getStatusLabel(status)}」に更新しました`);
-    
-  } catch (err) {
-    console.error('Update error:', err);
-    console.error('Error response:', err.response);
-    console.error('Error data:', err.response?.data);
-    
-    let errorMessage = 'エラーが発生しました';
-    if (err.response?.data?.errors) {
-      errorMessage = Object.values(err.response.data.errors).flat().join(', ');
-    } else if (err.response?.data?.message) {
-      errorMessage = err.response.data.message;
-    }
-    
-    alert('更新に失敗しました: ' + errorMessage);
-  }
-};
-
 const deleteBook = async () => {
   if (!confirm('この書籍を削除してもよろしいですか？\nこの操作は取り消せません。')) {
     return;
@@ -284,19 +210,6 @@ const deleteBook = async () => {
   }
 };
 
-const getStatusClass = (status) => {
-  switch (status) {
-    case 'unread':
-      return 'bg-gray-100 text-gray-800';
-    case 'reading':
-      return 'bg-blue-100 text-blue-800';
-    case 'read':
-      return 'bg-green-100 text-green-800';
-    default:
-      return 'bg-gray-100 text-gray-800';
-  }
-};
-
 const getDiscardStatusClass = (status) => {
   if (!status) return '';
   
@@ -311,19 +224,6 @@ const getDiscardStatusClass = (status) => {
       return 'bg-green-100 text-green-800';
     default:
       return 'bg-gray-100 text-gray-800';
-  }
-};
-
-const getStatusLabel = (status) => {
-  switch (status) {
-    case 'unread':
-      return '未読';
-    case 'reading':
-      return '読書中';
-    case 'read':
-      return '読了';
-    default:
-      return status;
   }
 };
 

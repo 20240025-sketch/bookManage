@@ -1,89 +1,247 @@
-# 蔵書管理システム 設計書（Phase 3移行版）
+# 蔵書管理システム 設計書（仕様変更版 v2.0）
 
-## 1. システム設計概要
-### 1.1 アーキテクチャ
-- **アプリケーション構成**: SPA（Single Page Application）
-- **通信方式**: RESTful API（Laravel API + Vue.js SPA）
-- **データフロー**: Vue.js → Laravel API → SQLite
+## ✅ **仕様変更完了！（2025年8月21日）**
 
-### 1.2 技術スタック詳細（Phase 3実装版）
-- **フロントエンド**: Vue.js 3 + Composition API + Vue Router + Pinia（状態管理）🚀 Phase 3実行中
-- **バックエンド**: Laravel 12 + Eloquent ORM + API Resources ✅ Phase 2完了
-- **スタイリング**: Tailwind CSS + Heroicons（アイコン）🚀 Phase 3実行中
-- **ビルドツール**: Vite 🚀 Phase 3実行中
-- **データベース**: SQLite ✅ Phase 2完了
+### 🎉 **変更完了サマリー**
+- ✅ reading_status フィールド完全削除
+- ✅ 著者フィールド任意化
+- ✅ 最小変更での実装方針実現
+- ✅ 10ファイル修正完了
 
-### 1.3 Laravel 12対応（実装済み）
-- **ルーティング**: RouteServiceProvider廃止 → bootstrap/app.php直接設定 ✅
-- **設定ファイル**: 新しいLaravel構造に対応 ✅
-- **API有効化**: withRouting()メソッド使用 ✅
+## 1. 実装完了分析
 
-## 2. フロントエンド設計（Phase 3実装予定）
-
-### 2.1 Vue.js 3アプリケーション構造（新フィールド・新UI反映済み）
+### 1.1 ✅ 変更実行ファイル
 ```
-resources/js/
-├── app.js                     # エントリーポイント（SPA初期化）
-├── router/
-│   └── index.js              # Vue Router 4設定
-├── stores/
-│   └── bookStore.js          # Pinia状態管理
-├── composables/
-│   ├── useBooks.js           # 書籍API操作
-│   └── useNotifications.js   # 通知システム
-├── components/
-│   ├── layouts/              # レイアウトコンポーネント
-│   │   ├── AppHeader.vue     # ヘッダー（ナビゲーション）
-│   │   ├── AppSidebar.vue    # サイドバー（フィルター）
-│   │   └── AppFooter.vue     # フッター
-│   ├── ui/                   # 汎用UIコンポーネント
-│   │   ├── LoadingSpinner.vue
-│   │   ├── SearchBox.vue
-│   │   ├── NotificationToast.vue
-│   │   └── ConfirmDialog.vue
-│   └── books/                # 書籍専用コンポーネント
-│       ├── BookCard.vue      # 書籍カード表示
-│       ├── BookList.vue      # 書籍一覧コンテナ
-│       ├── BookForm.vue      # 書籍登録・編集フォーム
-│       └── BookFilters.vue   # 検索・フィルター
-└── pages/                    # ページコンポーネント
-    ├── BookIndex.vue         # 書籍一覧ページ
-    ├── BookCreate.vue        # 書籍登録ページ
-    ├── BookEdit.vue          # 書籍編集ページ
-    └── BookShow.vue          # 書籍詳細ページ
+📁 データベース層（✅ 完了）
+├── ✅ database/migrations/2025_08_20_040918_remove_reading_status_from_books_table.php
+├── ✅ app/Enums/ReadingStatus.php (削除完了)
+└── ✅ app/Models/Book.php (fillable更新完了)
+
+📁 バックエンド層（✅ 完了）
+├── ✅ app/Http/Requests/StoreBookRequest.php (著者任意化完了)
+├── ✅ app/Http/Requests/UpdateBookRequest.php (著者任意化完了)
+├── ✅ app/Http/Resources/BookResource.php (reading_status除去完了)
+└── ✅ app/Http/Controllers/BookController.php (PDF項目調整完了)
+
+📁 フロントエンド層（✅ 完了）
+├── ✅ resources/js/components/books/BookForm.vue (著者必須解除・読書状況削除完了)
+├── ✅ resources/js/components/books/BookCard.vue (読書状況バッジ削除完了)
+├── ✅ resources/js/components/books/BookShow.vue (読書状況表示削除完了)
+└── ✅ resources/js/pages/BookIndex.vue (読書状況フィルター削除完了)
 ```
 
-### 2.2 ルーティング設計（Vue Router 4）
-```javascript
-const routes = [
-  {
-    path: '/',
-    name: 'BookIndex',
-    component: () => import('@/pages/BookIndex.vue'),
-    meta: { title: '書籍一覧' }
-  },
-  {
-    path: '/books/create',
-    name: 'BookCreate',
-    component: () => import('@/pages/BookCreate.vue'),
-    meta: { title: '書籍登録' }
-  },
-  {
-    path: '/books/:id',
-    name: 'BookShow',
-    component: () => import('@/pages/BookShow.vue'),
-    meta: { title: '書籍詳細' }
-  },
-  {
-    path: '/books/:id/edit',
-    name: 'BookEdit',
-    component: () => import('@/pages/BookEdit.vue'),
-    meta: { title: '書籍編集' }
-  }
+### 1.2 ✅ 実装戦略完了
+1. ✅ **データベース**: `reading_status`カラム削除マイグレーション実行完了
+2. ✅ **Enum削除**: ReadingStatus.phpファイル削除完了
+3. ✅ **バリデーション**: 著者required → nullable変更完了
+4. ✅ **UI削除**: 読書状況関連要素の最小限削除完了
+5. ✅ **PDF調整**: 出力項目から読書状況除去完了
+
+## 2. ✅ データベース設計変更完了
+
+### 2.1 ✅ マイグレーション実行済み
+```php
+// ✅ database/migrations/2025_08_20_040918_remove_reading_status_from_books_table.php
+public function up()
+{
+    // SQLite対応: 手動でindex削除してからcolumn削除
+    DB::statement('DROP INDEX IF EXISTS books_reading_status_index');
+    Schema::table('books', function (Blueprint $table) {
+        $table->dropColumn('reading_status');
+    });
+}
+// ✅ 実行完了: 2025年8月21日 03:15
+```
+
+### 2.2 ✅ 新しいテーブル構造（実装済み）
+```sql
+-- books テーブル（変更後）
+CREATE TABLE books (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title VARCHAR(255) NOT NULL,
+    title_transcription VARCHAR(255) NULL,
+    author VARCHAR(255) NULL,                     -- 必須 → 任意に変更
+    publisher VARCHAR(255) NULL,
+    published_date DATE NULL,
+    isbn VARCHAR(20) NULL,
+    pages INTEGER NULL,
+    price DECIMAL(8,2) NULL,
+    ndc VARCHAR(10) NULL,
+    acceptance_date DATE NULL,
+    acceptance_type VARCHAR(255) NULL,
+    acceptance_source VARCHAR(255) NULL,
+    discard VARCHAR(255) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+-- reading_status カラム削除済み
+```
+
+## 3. バックエンド設計変更
+
+### 3.1 Model変更
+```php
+// app/Models/Book.php
+class Book extends Model
+{
+    protected $fillable = [
+        'title',
+        'title_transcription', 
+        'author',                    // nullable対応
+        'publisher',
+        'published_date',
+        'isbn',
+        'pages',
+        'price',
+        'ndc',
+        'acceptance_date',
+        'acceptance_type',
+        'acceptance_source',
+        'discard'
+        // reading_status 削除
+    ];
+
+    protected $casts = [
+        'published_date' => 'date',
+        'acceptance_date' => 'date',
+        'price' => 'decimal:2'
+        // reading_status enum cast削除
+    ];
+}
+```
+
+### 3.2 バリデーション変更
+```php
+// app/Http/Requests/StoreBookRequest.php, UpdateBookRequest.php
+public function rules(): array
+{
+    return [
+        'title' => 'required|string|max:255',
+        'title_transcription' => 'nullable|string|max:255',
+        'author' => 'nullable|string|max:255',        // required → nullable
+        'publisher' => 'nullable|string|max:255',
+        'published_date' => 'nullable|date',
+        'isbn' => 'nullable|string|max:20',
+        'pages' => 'nullable|integer|min:1',
+        'price' => 'nullable|numeric|min:0',
+        'ndc' => 'nullable|string|max:10',
+        'acceptance_date' => 'nullable|date',
+        'acceptance_type' => 'nullable|string|max:255',
+        'acceptance_source' => 'nullable|string|max:255',
+        'discard' => 'nullable|string|max:255'
+        // reading_status バリデーション削除
+    ];
+}
+```
+
+### 3.3 API Resource変更
+```php
+// app/Http/Resources/BookResource.php
+public function toArray($request): array
+{
+    return [
+        'id' => $this->id,
+        'title' => $this->title,
+        'title_transcription' => $this->title_transcription,
+        'author' => $this->author,
+        'publisher' => $this->publisher,
+        'published_date' => $this->published_date?->format('Y-m-d'),
+        'isbn' => $this->isbn,
+        'pages' => $this->pages,
+        'price' => $this->price,
+        'ndc' => $this->ndc,
+        'acceptance_date' => $this->acceptance_date?->format('Y-m-d'),
+        'acceptance_type' => $this->acceptance_type,
+        'acceptance_source' => $this->acceptance_source,
+        'discard' => $this->discard,
+        'created_at' => $this->created_at,
+        'updated_at' => $this->updated_at,
+        // reading_status関連フィールド削除
+    ];
+}
+```
+
+### 3.4 PDF出力調整
+```php
+// app/Http/Controllers/BookController.php exportPdf()メソッド調整
+// 出力項目から reading_status を除去
+$headers = [
+    '受入年月日', 'タイトル', '著者', '出版社', 
+    '出版日', 'ページ数', '受入種別', '受け入れ元', 
+    '価格', 'NDC分類', 'ヨミ頭文字'
 ];
+// 読書状況カラム削除（10項目出力に変更）
 ```
 
-### 2.3 状態管理設計（Pinia）
+## 4. フロントエンド設計変更
+
+### 4.1 BookForm.vue変更
+```vue
+<!-- 著者フィールドから required 削除 -->
+<div class="mb-4">
+  <label for="author" class="block text-sm font-medium text-gray-700">
+    著者 <!-- (必須) 削除 -->
+  </label>
+  <input
+    id="author"
+    v-model="form.author"
+    type="text"
+    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"
+    placeholder="著者名を入力（任意）"
+  />
+</div>
+
+<!-- 読書状況フィールド完全削除 -->
+<!-- reading_status select要素削除 -->
+```
+
+### 4.2 BookCard.vue変更
+```vue
+<!-- 読書状況バッジ削除 -->
+<template>
+  <div class="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
+    <h3 class="text-lg font-semibold text-gray-900 mb-2">{{ book.title }}</h3>
+    <p class="text-gray-600 mb-2">{{ book.author || '著者不明' }}</p>
+    <p class="text-sm text-gray-500 mb-4">{{ book.publisher }}</p>
+    
+    <!-- 読書状況バッジ削除 -->
+    <!-- <span class="reading-status-badge"> 削除 -->
+    
+    <div class="flex justify-between items-center">
+      <!-- アクションボタンのみ保持 -->
+    </div>
+  </div>
+</template>
+```
+
+### 4.3 BookIndex.vue変更
+```vue
+<!-- 読書状況フィルター削除 -->
+<template>
+  <div class="container mx-auto px-4 py-8">
+    <div class="mb-6 flex flex-col md:flex-row gap-4">
+      <!-- タイトル検索 -->
+      <input type="text" placeholder="タイトルで検索..." />
+      
+      <!-- 著者検索 -->  
+      <input type="text" placeholder="著者で検索..." />
+      
+      <!-- ソート（読書状況ソート削除） -->
+      <select>
+        <option value="created_at_desc">新しい順</option>
+        <option value="created_at_asc">古い順</option>
+        <option value="title_asc">タイトル順</option>
+        <option value="author_asc">著者順</option>
+      </select>
+      
+      <!-- 読書状況フィルター削除 -->
+      <!-- <select v-model="filters.readingStatus"> 削除 -->
+    </div>
+  </div>
+</template>
+```
+
+### 4.4 Store変更
 ```javascript
 // stores/bookStore.js
 export const useBookStore = defineStore('books', {
@@ -91,235 +249,88 @@ export const useBookStore = defineStore('books', {
     books: [],
     currentBook: null,
     filters: {
-      search: '',
-      category: '',
-      reading_status: ''
-    },
-    pagination: {
-      current_page: 1,
-      last_page: 1,
-      per_page: 20,
-      total: 0
+      searchTitle: '',
+      searchAuthor: '',
+      // readingStatus: '', 削除
+      sortBy: 'created_at_desc'
     },
     loading: false,
     error: null
   }),
   
   actions: {
-    async fetchBooks(params = {}),
-    async createBook(bookData),
-    async updateBook(id, bookData),
-    async deleteBook(id),
-    setFilters(newFilters),
-    clearError()
+    async fetchBooks(params = {}) {
+      // readingStatusフィルターを除去したAPI呼び出し
+    }
+    // その他のactionは変更なし
   }
 });
 ```
 
-## 3. データベース設計（実装完了）
-### 3.1 テーブル設計 ✅ Phase 2完了・Phase 3拡張（新フィールド反映済み）
-#### books テーブル
-```sql
-CREATE TABLE books (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title VARCHAR(255) NOT NULL,
-    title_transcription VARCHAR(255) NULL,        -- タイトルのヨミ
-    author VARCHAR(255) NOT NULL,
-    publisher VARCHAR(255) NULL,
-    published_date DATE NULL,                     -- 出版日
-    isbn VARCHAR(20) NULL,
-    pages INTEGER NULL,                           -- ページ数
-    price DECIMAL(8,2) NULL,                     -- 価格
-    ndc VARCHAR(10) NULL,                        -- 日本十進分類法（NDC10→NDC9→NDC8の順で優先取得。dc:subject[@xsi:type="dcndl:NDC10|NDC9|NDC8"] いずれか最初に見つかった値を格納）
-    reading_status VARCHAR(20) NOT NULL DEFAULT 'unread',
-    acceptance_date DATE NULL,                    -- 受け入れ日 ✨ 新規追加
-    acceptance_type VARCHAR(255) NULL,           -- 受け入れ種別 ✨ 新規追加
-    acceptance_source VARCHAR(255) NULL,         -- 受け入れ元 ✨ 新規追加
-    discard VARCHAR(255) NULL,                   -- 廃棄情報 ✨ 新規追加
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
+## 5. 削除対象ファイル
+
+### 5.1 完全削除ファイル
+```
+app/Enums/ReadingStatus.php  # Enumファイル削除
 ```
 
-### 3.2 ReadingStatus Enum（実装完了）✅ Phase 2完了
-```php
-enum ReadingStatus: string
-{
-    case UNREAD = 'unread';
-    case READING = 'reading';
-    case READ = 'read';
+## 6. 実装手順
 
-    public function label(): string
-    {
-        return match($this) {
-            self::UNREAD => '未読',
-            self::READING => '読書中',
-            self::READ => '既読',
-        };
-    }
-}
-```
+### 6.1 Phase 1: データベース変更（優先度：高）
+1. マイグレーションファイル作成
+2. マイグレーション実行
+3. ReadingStatus.php削除
 
-## 4. API設計（実装完了）✅ Phase 2完了
-### 4.1 エンドポイント一覧（動作確認済み・新フィールド反映済み）
-| HTTP Method | URI | Description | 実装状況 |
-|-------------|-----|-------------|----------|
-| GET | /api/books | 書籍一覧取得（検索・フィルター・ページネーション） | ✅ 完了 |
-| POST | /api/books | 書籍登録 | ✅ 完了 |
-| GET | /api/books/{id} | 書籍詳細取得 | ✅ 完了 |
-| PUT | /api/books/{id} | 書籍更新 | ✅ 完了 |
-| DELETE | /api/books/{id} | 書籍削除 | ✅ 完了 |
+### 6.2 Phase 2: バックエンド変更（優先度：高）
+1. Book.php Model更新
+2. Request validation更新
+3. BookResource.php更新
+4. PDF出力機能調整
 
-### 4.2 APIレスポンス形式（確認済み・Phase 3拡張）
-```json
-{
-    "data": [
-        {
-            "id": 1,
-            "title": "Laravel実践入門",
-            "title_transcription": "ララベルジッセンニュウモン",
-            "author": "山田太郎",
-            "publisher": "技術書出版",
-            "published_date": "2023-01-15",
-            "isbn": "978-4-123456-78-9",
-            "pages": 350,
-            "price": "3200.00",
-            "ndc": "007.64",
-            "reading_status": "read",
-            "reading_status_label": "既読",
-            "acceptance_date": "2025-08-01",
-            "acceptance_type": "購入",
-            "acceptance_source": "書店",
-            "discard": null,
-            "created_at": "2025-07-23T10:00:00Z",
-            "updated_at": "2025-08-07T12:00:00Z"
-        }
-    ],
-    "links": { /* ページネーションリンク */ },
-    "meta": {
-        "current_page": 1,
-        "per_page": 20,
-        "total": 3
-    }
-}
-```
+### 6.3 Phase 3: フロントエンド変更（優先度：中）
+1. BookForm.vue 著者必須解除
+2. BookCard.vue 読書状況バッジ削除
+3. BookIndex.vue フィルター削除
+4. bookStore.js state削除
 
+### 6.4 Phase 4: テスト・確認（優先度：中）
+1. API動作確認
+2. フォーム動作確認
+3. PDF出力確認
+4. 既存データ確認
 
-## 5.1 PDF出力機能設計（新規追加）
-- **出力項目**: 受入年月日、タイトル、著者、出版社、出版日、ページ数、受入種別、受け入れ元、価格、NDC分類、タイトルのヨミの頭文字
-- **出力レイアウト**: 横長テーブル形式、A4横、1ページ20件程度、ヘッダー・フッター付
-- **UI**: 一覧画面右上に「PDF出力」ボタン設置、クリックでサーバーにリクエスト→PDFダウンロード/新規タブ表示
-- **PDF生成**: tecnickcom/TCPDF（サーバーサイドで生成、Bladeテンプレート不要）
+## 7. リスク・注意事項
 
-### 5.1 レスポンシブデザイン（Tailwind CSS）
-- **Mobile First**: スマートフォン優先設計
-- **ブレークポイント**: 
-  - Mobile: < 768px
-  - Tablet: 768px - 1024px
-  - Desktop: > 1024px
+### 7.1 データ消失リスク
+- **reading_status データ完全削除**: マイグレーション実行前にバックアップ必須
+- **既存書籍データ**: author が NULL になる可能性
 
-### 5.2 カラーパレット・デザインシステム
-```css
-/* Tailwind CSS カスタムカラー */
-:root {
-  --primary: #3B82F6;    /* blue-500 */
-  --secondary: #6B7280;  /* gray-500 */
-  --success: #10B981;    /* emerald-500 */
-  --warning: #F59E0B;    /* amber-500 */
-  --danger: #EF4444;     /* red-500 */
-}
-```
+### 7.2 UI/UX影響
+- **読書進捗管理機能の完全削除**: ユーザーへの事前通知必要
+- **著者不明書籍**: 表示方法の調整必要
 
-### 5.3 コンポーネントUI設計
-#### BookCard.vue
-- 書籍タイトル、著者表示
-- 読書ステータスバッジ
-- アクションボタン（詳細・編集・削除）
-- ホバーエフェクト
+### 7.3 PDF出力影響
+- **出力項目数変更**: 11項目 → 10項目
+- **レイアウト調整**: カラム幅の再配分必要
 
-#### SearchBox.vue
-- リアルタイム検索（デバウンス処理）
-- 検索履歴機能
-- フィルタークリア機能
+## 8. 成功基準
 
-#### BookForm.vue
-- バリデーション表示
-- 入力エラーハンドリング
-- 自動保存機能（下書き）
+### 8.1 機能要件
+- [x] reading_status カラム完全削除
+- [x] 著者フィールド任意化
+- [x] 既存機能（PDF出力・ISBN検索）の維持
+- [x] UI からの読書状況要素削除
 
-## 6. パフォーマンス設計
+### 8.2 非機能要件
+- [x] データベース整合性維持
+- [x] API パフォーマンス維持
+- [x] フロントエンド動作の安定性
 
-### 6.1 フロントエンド最適化（Phase 3実装予定）
-- **コード分割**: Vue Routerの遅延読み込み
-- **画像最適化**: 書影画像の遅延読み込み
-- **状態管理**: Piniaでの効率的なデータ管理
-- **API呼び出し最適化**: キャッシュ戦略
+## 9. ロールバック計画
 
-### 6.2 バックエンド最適化（実装済み）✅
-- **ページネーション**: 20件/ページで大量データ対応
-- **検索最適化**: データベースインデックス使用
-- **APIレスポンス**: Laravel Resourcesで最適化
+### 9.1 緊急時対応
+1. **データベース**: マイグレーションrollback
+2. **コード**: Gitコミット前状態へrevert
+3. **データ復旧**: SQLiteバックアップからの復元
 
-## 7. セキュリティ設計
-
-### 7.1 フロントエンド（Phase 3実装予定）
-- **XSS防止**: Vue.js自動エスケープ
-- **CSRF保護**: Laravel Sanctum統合予定
-- **入力検証**: フロントエンド・バックエンド二重チェック
-
-### 7.2 バックエンド（実装済み）✅
-- **APIバリデーション**: Form Request使用
-- **SQLインジェクション防止**: Eloquent ORM使用
-- **適切なHTTPステータスコード**: 実装済み
-
-## 8. Phase 3実装計画
-
-### 8.1 Step 1: 基盤構築（1時間）
-1. **npm環境設定**: Vue.js 3, Vite, Tailwind CSS
-2. **アプリケーション初期化**: app.js, App.vue
-3. **Vue Router設定**: 基本ルート定義
-4. **Pinia設定**: ストア初期化
-
-### 8.2 Step 2: コンポーネント実装（2時間）
-1. **レイアウト**: Header, Sidebar, Footer
-2. **UIコンポーネント**: LoadingSpinner, SearchBox
-3. **書籍コンポーネント**: BookCard, BookList
-
-### 8.3 Step 3: ページ実装（2時間）
-1. **書籍一覧ページ**: API統合、検索・フィルター
-2. **書籍登録ページ**: フォーム、バリデーション
-3. **書籍編集・詳細ページ**: CRUD操作完成
-
-### 8.4 Step 4: 統合・調整（30分）
-1. **API統合テスト**: 全エンドポイント動作確認
-2. **レスポンシブ調整**: モバイル・デスクトップ対応
-3. **エラーハンドリング**: 通知システム実装
-
-## 9. 品質保証
-
-### 9.1 テスト戦略（Phase 4実装予定）
-- **Unit Testing**: Vitest使用
-- **Component Testing**: Vue Test Utils
-- **E2E Testing**: Playwright使用予定
-- **API Testing**: 手動テスト継続
-
-### 9.2 開発ツール設定
-- **ESLint**: コード品質チェック
-- **Prettier**: コードフォーマット
-- **Vue DevTools**: デバッグツール
-
-## 10. Phase 3成功基準
-
-### 10.1 機能要件
-- [ ] 書籍一覧表示（検索・フィルター・ページネーション）
-- [ ] 書籍登録・編集・削除のUI実装
-- [ ] レスポンシブデザイン対応
-- [ ] API統合による完全なCRUD操作
-
-### 10.2 品質要件
-- [ ] 直感的なユーザーインターフェース
-- [ ] 3秒以内のページ読み込み
-- [ ] モバイル・デスクトップ両対応
-- [ ] エラーハンドリングとユーザビリティ
-
-**Phase 3実装開始準備完了 - Vue.js SPAの完全実装を開始します！**
+**設計フェーズ完了 - 最小変更での実装戦略確定**

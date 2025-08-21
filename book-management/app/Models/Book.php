@@ -4,7 +4,6 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Enums\ReadingStatus;
 
 class Book extends Model
 {
@@ -20,7 +19,6 @@ class Book extends Model
         'pages',
         'price',
         'ndc',
-        'reading_status',
         'acceptance_date',
         'acceptance_type',
         'acceptance_source',
@@ -28,15 +26,10 @@ class Book extends Model
     ];
 
     protected $casts = [
-        'reading_status' => ReadingStatus::class,
         'published_date' => 'date',
         'acceptance_date' => 'date',
         'pages' => 'integer',
         'price' => 'decimal:2',
-    ];
-
-    protected $attributes = [
-        'reading_status' => 'unread', // デフォルトは「未読」
     ];
 
     // 検索スコープ
@@ -47,14 +40,5 @@ class Book extends Model
               ->orWhere('author', 'like', "%{$search}%")
               ->orWhere('publisher', 'like', "%{$search}%");
         });
-    }
-
-    // 読書状況フィルタスコープ
-    public function scopeReadingStatus($query, $status)
-    {
-        if ($status) {
-            return $query->where('reading_status', $status);
-        }
-        return $query;
     }
 }

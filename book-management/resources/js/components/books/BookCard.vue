@@ -10,15 +10,8 @@
           {{ book.title_transcription }}
         </p>
         <p class="text-sm text-gray-600">
-          著者: {{ book.author }}
+          著者: {{ book.author || '不明' }}
         </p>
-      </div>
-      
-      <!-- 読書ステータスバッジ -->
-      <div class="ml-4">
-        <span :class="statusBadgeClass">
-          {{ book.reading_status_label }}
-        </span>
       </div>
     </div>
 
@@ -120,22 +113,6 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['delete']);
-
-// 読書ステータスバッジのスタイル
-const statusBadgeClass = computed(() => {
-  const baseClass = "px-2 py-1 text-xs font-medium rounded-full";
-  
-  switch (props.book.reading_status) {
-    case 'unread':
-      return `${baseClass} bg-gray-100 text-gray-800`;
-    case 'reading':
-      return `${baseClass} bg-orange-100 text-orange-800`;
-    case 'read':
-      return `${baseClass} bg-green-100 text-green-800`;
-    default:
-      return `${baseClass} bg-gray-100 text-gray-800`;
-  }
-});
 
 // 廃棄ステータスのスタイル
 const discardStatusClass = computed(() => {

@@ -36,16 +36,15 @@
       <!-- 著者 -->
       <div>
         <label for="author" class="block text-sm font-medium text-gray-700 mb-2">
-          著者 <span class="text-red-500">*</span>
+          著者
         </label>
         <input
           id="author"
           v-model="form.author"
           type="text"
-          required
           class="form-input"
           :class="{ 'border-red-500': errors.author }"
-          placeholder="著者名を入力してください"
+          placeholder="著者名を入力してください（任意）"
         >
         <p v-if="errors.author" class="mt-1 text-sm text-red-600">{{ errors.author[0] }}</p>
       </div>
@@ -135,25 +134,6 @@
           class="form-input"
           placeholder="例: 410"
         >
-      </div>
-
-      <!-- 読書状況 -->
-      <div>
-        <label for="reading_status" class="block text-sm font-medium text-gray-700 mb-2">
-          読書状況 <span class="text-red-500">*</span>
-        </label>
-        <select
-          id="reading_status"
-          v-model="form.reading_status"
-          class="form-select"
-          :class="{ 'border-red-500': errors.reading_status }"
-        >
-          <option value="">選択してください</option>
-          <option value="unread">未読</option>
-          <option value="reading">読書中</option>
-          <option value="read">読了</option>
-        </select>
-        <p v-if="errors.reading_status" class="mt-1 text-sm text-red-600">{{ errors.reading_status[0] }}</p>
       </div>
     </div>
 

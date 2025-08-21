@@ -80,7 +80,6 @@ const form = reactive({
   pages: null,
   price: null,
   ndc: '',
-  reading_status: '',
   acceptance_date: '',
   acceptance_type: '',
   acceptance_source: '',
