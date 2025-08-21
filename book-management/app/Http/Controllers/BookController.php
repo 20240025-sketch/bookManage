@@ -456,8 +456,7 @@ class BookController extends Controller
                 '受入種別' => 20,
                 '受け入れ元' => 25,
                 '価格' => 15,
-                'NDC分類' => 15,
-                'ヨミ頭文字' => 15
+                '図書分類' => 20
             ];
 
             foreach ($headers as $header => $width) {
@@ -521,6 +520,16 @@ class BookController extends Controller
                 }
 
                 $yomiInitial = $book->title_transcription ? mb_substr($book->title_transcription, 0, 1, 'UTF-8') : '';
+                
+                // 図書分類の作成 (NDC分類 + ヨミ頭文字)
+                $classification = '';
+                if ($book->ndc && $yomiInitial) {
+                    $classification = $book->ndc . '-' . $yomiInitial;
+                } elseif ($book->ndc) {
+                    $classification = $book->ndc;
+                } elseif ($yomiInitial) {
+                    $classification = $yomiInitial;
+                }
 
                 $rowData = [
                     $book->acceptance_date ? $book->acceptance_date->format('Y/m/d') : '',
@@ -532,8 +541,7 @@ class BookController extends Controller
                     $book->acceptance_type ?: '',
                     $book->acceptance_source ?: '',
                     $book->price ? number_format($book->price) . '円' : '',
-                    $book->ndc ?: '',
-                    $yomiInitial
+                    $classification
                 ];
 
                 $requiredLines = 1;
