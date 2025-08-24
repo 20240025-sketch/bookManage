@@ -394,8 +394,8 @@ class BookController extends Controller
             $pdf->setPrintHeader(false);
             $pdf->setPrintFooter(false);
 
-            $pdf->SetMargins(10, 15, 10);
-            $pdf->SetAutoPageBreak(true, 20);
+            $pdf->SetMargins(10, 10, 10);
+            $pdf->SetAutoPageBreak(true, 10);
 
             $pdf->AddPage();
 
@@ -480,7 +480,12 @@ class BookController extends Controller
             $pdf->SetFillColor(255, 255, 255);
 
             foreach ($books as $book) {
-                if ($pdf->GetY() > 170) {
+                // ページの有効高さを計算（A4横向きの場合: 210mm - 上下余白20mm = 190mm）
+                $pageHeight = 210 - 20; // A4横向き - 上下余白
+                $currentY = $pdf->GetY();
+                
+                // 次の行を追加した時にページをはみ出すかチェック
+                if ($currentY > ($pageHeight - 10)) { // 余裕を持って10mm手前で改ページ
                     $pdf->AddPage();
                     
                     if ($fontname) {
@@ -559,7 +564,7 @@ class BookController extends Controller
                 }
                 
                 $requiredLines = min($requiredLines, 3);
-                $cellHeight = $requiredLines * 4;
+                $cellHeight = $requiredLines * 4.5;
 
                 $startY = $pdf->GetY();
                 $startX = $pdf->GetX();
@@ -600,12 +605,12 @@ class BookController extends Controller
                         $lines = array_slice($lines, 0, $requiredLines);
                         
                         foreach ($lines as $lineIndex => $line) {
-                            $lineY = $startY + 1 + ($lineIndex * 4);
+                            $lineY = $startY + 1.0 + ($lineIndex * 4.5);
                             $pdf->SetXY($currentX + 1, $lineY);
                             $pdf->Cell($width - 2, 3, $line, 0, 0, 'L', false);
                         }
                     } else {
-                        $textY = $startY + ($cellHeight / 2) - 1.5;
+                        $textY = $startY + ($cellHeight / 2) - 1.75;
                         $pdf->SetXY($currentX, $textY);
                         $pdf->Cell($width, 3, $data, 0, 0, 'C', false);
                     }
@@ -617,7 +622,8 @@ class BookController extends Controller
                 $pdf->SetXY($startX, $startY + $cellHeight);
             }
 
-            $pdf->SetY(-15);
+            // フッター（ページ番号）を現在位置に追加
+            $pdf->Ln(5); // 少し間隔を空ける
             if ($fontname) {
                 $pdf->SetFont($fontname, '', 8);
             } else {
