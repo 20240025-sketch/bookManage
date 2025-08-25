@@ -27,6 +27,12 @@ class BookController extends Controller
             $query->where('acceptance_date', '<=', $request->end_date);
         }
 
+        // NDC分類フィルター
+        if ($request->filled('ndc')) {
+            // NDCは前方一致で検索（例：3で始まる社会科学全般）
+            $query->where('ndc', 'like', $request->ndc . '%');
+        }
+
         $books = $query->orderBy('created_at', 'desc')->get();
         
         return response()->json([
@@ -360,7 +366,24 @@ class BookController extends Controller
     public function exportPdf(Request $request): Response
     {
         try {
-            $books = Book::all();
+
+            $query = Book::query();
+
+            // NDC分類フィルター
+            if ($request->filled('ndc')) {
+                $query->where('ndc', 'like', $request->ndc . '%');
+            }
+
+            // 受入日範囲フィルター
+            if ($request->filled('start_date')) {
+                $query->where('acceptance_date', '>=', $request->start_date);
+            }
+            if ($request->filled('end_date')) {
+                $query->where('acceptance_date', '<=', $request->end_date);
+            }
+
+            // 受入年月日の早い順（古い順）でソート
+            $books = $query->orderBy('acceptance_date', 'asc')->get();
 
             $pdf = new \TCPDF('L', 'mm', 'A4', true, 'UTF-8', false);
 
@@ -438,7 +461,40 @@ class BookController extends Controller
                     }
                 }
             }
+
+            // フィルター条件の表示
+            $filterText = '';
+            if ($request->filled('ndc')) {
+                $ndcMap = [
+                    '0' => '総記',
+                    '1' => '哲学',
+                    '2' => '歴史',
+                    '3' => '社会科学',
+                    '4' => '自然科学',
+                    '5' => '技術・工学',
+                    '6' => '産業',
+                    '7' => '芸術・美術',
+                    '8' => '言語',
+                    '9' => '文学'
+                ];
+                $ndcValue = $request->ndc;
+                $filterText .= 'NDC分類: ' . $ndcValue . ' ' . ($ndcMap[$ndcValue] ?? '') . '　';
+            }
+            if ($request->filled('start_date') || $request->filled('end_date')) {
+                $filterText .= '受入期間: ';
+                if ($request->filled('start_date')) {
+                    $filterText .= date('Y年m月d日', strtotime($request->start_date));
+                }
+                $filterText .= ' ～ ';
+                if ($request->filled('end_date')) {
+                    $filterText .= date('Y年m月d日', strtotime($request->end_date));
+                }
+            }
+
             $pdf->Cell(0, 8, '出力日時: ' . date('Y年m月d日 H:i'), 0, 1, 'R');
+            if ($filterText) {
+                $pdf->Cell(0, 8, 'フィルター条件: ' . $filterText, 0, 1, 'L');
+            }
             $pdf->Ln(3);
 
             if ($fontname) {

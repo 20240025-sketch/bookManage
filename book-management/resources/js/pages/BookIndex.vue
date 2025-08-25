@@ -2,7 +2,7 @@
   <div class="container mx-auto px-4 py-8">
     <!-- フィルターセクション -->
     <div class="bg-white rounded-lg shadow p-6 mb-8">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
         <!-- 既存の検索フィールド -->
         <div>
           <label for="searchTitle" class="block text-sm font-medium text-gray-700 mb-1">
@@ -28,6 +28,30 @@
             class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
             placeholder="著者名で検索..."
           />
+        </div>
+
+        <!-- NDC分類フィルター -->
+        <div>
+          <label for="ndcFilter" class="block text-sm font-medium text-gray-700 mb-1">
+            NDC分類
+          </label>
+          <select
+            id="ndcFilter"
+            v-model="filters.ndc"
+            class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          >
+            <option value="">すべて</option>
+            <option value="0">0 総記</option>
+            <option value="1">1 哲学</option>
+            <option value="2">2 歴史</option>
+            <option value="3">3 社会科学</option>
+            <option value="4">4 自然科学</option>
+            <option value="5">5 技術・工学</option>
+            <option value="6">6 産業</option>
+            <option value="7">7 芸術・美術</option>
+            <option value="8">8 言語</option>
+            <option value="9">9 文学</option>
+          </select>
         </div>
 
         <!-- 受入日範囲フィルター -->
@@ -275,7 +299,8 @@ const filters = reactive({
   searchAuthor: '',
   sortBy: 'created_at_desc',
   startDate: '',
-  endDate: ''
+  endDate: '',
+  ndc: ''
 });
 
 const loadBooks = async () => {
@@ -286,6 +311,7 @@ const loadBooks = async () => {
     const params = {};
     if (filters.startDate) params.start_date = filters.startDate;
     if (filters.endDate) params.end_date = filters.endDate;
+    if (filters.ndc) params.ndc = filters.ndc;
     
     const response = await axios.get('/api/books', { params });
     books.value = response.data.data || response.data;
@@ -337,7 +363,7 @@ const filteredBooks = computed(() => {
 
 // アクティブなフィルターがあるかどうか
 const hasActiveFilters = computed(() => {
-  return filters.searchTitle || filters.searchAuthor || filters.startDate || filters.endDate;
+  return filters.searchTitle || filters.searchAuthor || filters.startDate || filters.endDate || filters.ndc;
 });
 
 const applyFilters = () => {
@@ -350,6 +376,7 @@ const clearFilters = () => {
   filters.sortBy = 'created_at_desc';
   filters.startDate = '';
   filters.endDate = '';
+  filters.ndc = '';
 };
 
 const formatDate = (dateString) => {
@@ -362,13 +389,23 @@ const exportPdf = async () => {
     
     // Build query parameters based on current filters
     const params = new URLSearchParams();
-    if (filters.searchTitle) {
-      params.append('search', filters.searchTitle);
-    }
-    if (filters.searchAuthor) {
-      params.append('search', filters.searchAuthor);
+    
+    // NDC分類フィルター
+    if (filters.ndc) {
+      params.append('ndc', filters.ndc);
     }
 
+    // 受入日範囲フィルター
+    if (filters.startDate) {
+      params.append('start_date', filters.startDate);
+    }
+    if (filters.endDate) {
+      params.append('end_date', filters.endDate);
+    }
+
+    // タイトル・著者フィルター（クライアントサイドフィルタリング）
+    const filteredData = filteredBooks.value;
+    
     const response = await axios.get('/api/books/pdf', {
       params: Object.fromEntries(params),
       responseType: 'blob'
@@ -402,7 +439,7 @@ onMounted(() => {
 });
 
 watch(
-  [() => filters.startDate, () => filters.endDate],
+  [() => filters.startDate, () => filters.endDate, () => filters.ndc],
   () => loadBooks(),
   { deep: true }
 );

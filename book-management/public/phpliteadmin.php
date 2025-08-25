@@ -63,7 +63,7 @@ $subdirectories = false;
 // );
 $databases = array(
 	array(
-		'path'=> 'C:\MyApp\bookManagement\book-management\database\database.sqlite',
+		'path'=> '/var/www/html/laravel-app/book-management/database/database.sqlite',
 		'name'=> 'main'
 	)
 );
