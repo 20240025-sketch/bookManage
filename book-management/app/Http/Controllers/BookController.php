@@ -15,9 +15,19 @@ class BookController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $books = Book::orderBy('created_at', 'desc')->get();
+        $query = Book::query();
+
+        // 受入日範囲フィルター
+        if ($request->filled('start_date')) {
+            $query->where('acceptance_date', '>=', $request->start_date);
+        }
+        if ($request->filled('end_date')) {
+            $query->where('acceptance_date', '<=', $request->end_date);
+        }
+
+        $books = $query->orderBy('created_at', 'desc')->get();
         
         return response()->json([
             'data' => $books,
