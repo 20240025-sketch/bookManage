@@ -8,6 +8,7 @@ use App\Http\Requests\UpdateBookRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Log;
 use Exception;
 
 class BookController extends Controller
@@ -95,9 +96,9 @@ class BookController extends Controller
      */
     public function searchByISBN(Request $request): JsonResponse
     {
-        \Log::info('BookController@searchByISBN called', ['isbn' => $request->input('isbn')]);
+        Log::info('BookController@searchByISBN called', ['isbn' => $request->input('isbn')]);
 
-        \Log::info('searchByISBN called', ['isbn' => $request->isbn, 'all' => $request->all()]);
+        Log::info('searchByISBN called', ['isbn' => $request->isbn, 'all' => $request->all()]);
         $request->validate([
             'isbn' => 'required|string|min:10|max:17'
         ]);
@@ -121,18 +122,18 @@ class BookController extends Controller
             ]);
 
             $xmlContent = $response->getBody()->getContents();
-            \Log::info('NDL API Response:', ['xml' => $xmlContent]);
+            Log::info('NDL API Response:', ['xml' => $xmlContent]);
             
             libxml_use_internal_errors(true);
             $xml = simplexml_load_string($xmlContent);
             
             if ($xml === false) {
                 $errors = libxml_get_errors();
-                \Log::error('XML Parse Error:', ['errors' => $errors]);
+                Log::error('XML Parse Error:', ['errors' => $errors]);
                 throw new \Exception('XMLパースエラー: ' . implode(', ', array_map(fn($e) => $e->message, $errors)));
             }
             
-            \Log::info('Parsed XML structure:', ['xml' => json_encode($xml)]);
+            Log::info('Parsed XML structure:', ['xml' => json_encode($xml)]);
             
             if (isset($xml->channel) && isset($xml->channel->item) && count($xml->channel->item) > 0) {
                 $item = $xml->channel->item[0];
@@ -141,7 +142,7 @@ class BookController extends Controller
                 $item->registerXPathNamespace('dcterms', 'http://purl.org/dc/terms/');
                 $item->registerXPathNamespace('dcndl', 'http://ndl.go.jp/dcndl/terms/');
                 
-                \Log::info('Item structure:', ['item' => json_encode($item)]);
+                Log::info('Item structure:', ['item' => json_encode($item)]);
                 
                 $bookData = [
                     'title' => null,
@@ -159,7 +160,7 @@ class BookController extends Controller
                 }
 
                 $dcndlElements = $item->children('http://ndl.go.jp/dcndl/terms/');
-                \Log::info('DCNDL Elements:', ['dcndl' => json_encode($dcndlElements)]);
+                Log::info('DCNDL Elements:', ['dcndl' => json_encode($dcndlElements)]);
                 
                 if (isset($dcndlElements->titleTranscription)) {
                     $bookData['title_transcription'] = trim((string)$dcndlElements->titleTranscription);
@@ -183,17 +184,17 @@ class BookController extends Controller
                     }
                 }
 
-                \Log::info('Starting pages extraction from dc:extent...');
+                Log::info('Starting pages extraction from dc:extent...');
                 
                 $extentNodes = $item->xpath('.//dc:extent');
                 if (!empty($extentNodes)) {
                     foreach ($extentNodes as $extentNode) {
                         $extentText = trim((string)$extentNode);
-                        \Log::info('Found dc:extent via XPath:', ['extent' => $extentText]);
+                        Log::info('Found dc:extent via XPath:', ['extent' => $extentText]);
                         
                         if (preg_match('/(\d+)\s*[pページ頁]?/u', $extentText, $matches)) {
                             $bookData['pages'] = (int)$matches[1];
-                            \Log::info('Pages extracted successfully:', ['extent' => $extentText, 'pages' => $bookData['pages']]);
+                            Log::info('Pages extracted successfully:', ['extent' => $extentText, 'pages' => $bookData['pages']]);
                             break;
                         }
                     }
@@ -201,24 +202,24 @@ class BookController extends Controller
                 
                 if (empty($bookData['pages']) && isset($dcElements->extent)) {
                     $extentText = trim((string)$dcElements->extent);
-                    \Log::info('DC extent direct access:', ['extent' => $extentText]);
+                    Log::info('DC extent direct access:', ['extent' => $extentText]);
                     
                     if (preg_match('/(\d+)\s*[pページ頁]?/u', $extentText, $matches)) {
                         $bookData['pages'] = (int)$matches[1];
-                        \Log::info('Pages found via direct access:', ['extent' => $extentText, 'pages' => $bookData['pages']]);
+                        Log::info('Pages found via direct access:', ['extent' => $extentText, 'pages' => $bookData['pages']]);
                     }
                 }
                 
                 if (empty($bookData['pages'])) {
-                    \Log::info('Checking all DC elements for extent...');
+                    Log::info('Checking all DC elements for extent...');
                     foreach ($dcElements as $elementName => $element) {
                         if ($elementName === 'extent') {
                             $extentText = trim((string)$element);
-                            \Log::info('Found dc:extent in element iteration:', ['extent' => $extentText]);
+                            Log::info('Found dc:extent in element iteration:', ['extent' => $extentText]);
                             
                             if (preg_match('/(\d+)\s*[pページ頁]?/u', $extentText, $matches)) {
                                 $bookData['pages'] = (int)$matches[1];
-                                \Log::info('Pages found via element iteration:', ['extent' => $extentText, 'pages' => $bookData['pages']]);
+                                Log::info('Pages found via element iteration:', ['extent' => $extentText, 'pages' => $bookData['pages']]);
                                 break;
                             }
                         }
@@ -226,10 +227,10 @@ class BookController extends Controller
                 }
                 
                 if (empty($bookData['pages'])) {
-                    \Log::warning('Pages not found in dc:extent elements');
+                    Log::warning('Pages not found in dc:extent elements');
                 }
 
-                \Log::info('Attempting NDC retrieval...');
+                Log::info('Attempting NDC retrieval...');
                 $item->registerXPathNamespace('xsi', 'http://www.w3.org/2001/XMLSchema-instance');
                 $ndcTypes = ['NDC10', 'NDC9', 'NDC8'];
                 $foundNdc = null;
@@ -237,7 +238,7 @@ class BookController extends Controller
                     $ndcNodes = $item->xpath("//dc:subject[@xsi:type='dcndl:$ndcType']");
                     if (!empty($ndcNodes)) {
                         $foundNdc = trim((string)$ndcNodes[0]);
-                        \Log::info("NDC found via XPath dc:subject[@xsi:type='dcndl:$ndcType']: ", ['ndc' => $foundNdc]);
+                        Log::info("NDC found via XPath dc:subject[@xsi:type='dcndl:$ndcType']: ", ['ndc' => $foundNdc]);
                         break;
                     }
                 }
@@ -248,7 +249,7 @@ class BookController extends Controller
                             $attributes = $subject->attributes('http://www.w3.org/2001/XMLSchema-instance');
                             if (isset($attributes->type) && (string)$attributes->type === "dcndl:$ndcType") {
                                 $foundNdc = trim((string)$subject);
-                                \Log::info("NDC found via attribute check ($ndcType):", ['ndc' => $foundNdc]);
+                                Log::info("NDC found via attribute check ($ndcType):", ['ndc' => $foundNdc]);
                                 break 2;
                             }
                         }
@@ -265,21 +266,21 @@ class BookController extends Controller
                         foreach ($subject->attributes('http://www.w3.org/2001/XMLSchema-instance') as $attrName => $attrValue) {
                             $allAttributes["xsi:$attrName"] = (string)$attrValue;
                         }
-                        \Log::info("DC Subject element $index:", [
+                        Log::info("DC Subject element $index:", [
                             'text' => $subjectText,
                             'attributes' => $allAttributes
                         ]);
                         foreach ($ndcTypes as $ndcType) {
                             if (isset($allAttributes['xsi:type']) && $allAttributes['xsi:type'] === "dcndl:$ndcType") {
                                 $foundNdc = $subjectText;
-                                \Log::info("NDC found via detailed attribute check ($ndcType):", ['ndc' => $foundNdc]);
+                                Log::info("NDC found via detailed attribute check ($ndcType):", ['ndc' => $foundNdc]);
                                 break 2;
                             }
                         }
                         
                         if (preg_match('/^NDC[:\s]*([\d.]+)/', $subjectText, $matches)) {
                             $foundNdc = $matches[1];
-                            \Log::info('NDC found via text pattern fallback:', ['ndc' => $foundNdc]);
+                            Log::info('NDC found via text pattern fallback:', ['ndc' => $foundNdc]);
                             break;
                         }
                     }
@@ -305,7 +306,7 @@ class BookController extends Controller
                         $date = new \DateTime($pubDate);
                         $bookData['published_date'] = $date->format('Y-m-d');
                     } catch (\Exception $e) {
-                        \Log::warning('Date parse error:', ['date' => $pubDate, 'error' => $e->getMessage()]);
+                        Log::warning('Date parse error:', ['date' => $pubDate, 'error' => $e->getMessage()]);
                     }
                 }
 
@@ -315,7 +316,7 @@ class BookController extends Controller
                     }
                 }
 
-                \Log::info('Extracted book data:', $bookData);
+                Log::info('Extracted book data:', $bookData);
 
                 return response()->json([
                     'success' => true,
@@ -335,7 +336,7 @@ class BookController extends Controller
             ], 404);
 
         } catch (\GuzzleHttp\Exception\RequestException $e) {
-            \Log::error('Guzzle Request Error:', [
+            Log::error('Guzzle Request Error:', [
                 'message' => $e->getMessage(),
                 'code' => $e->getCode()
             ]);
@@ -346,7 +347,7 @@ class BookController extends Controller
             ], 500);
             
         } catch (\Exception $e) {
-            \Log::error('General Error:', [
+            Log::error('General Error:', [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
@@ -363,6 +364,24 @@ class BookController extends Controller
     /**
      * Export books list to PDF
      */
+    /**
+     * 貸出可能な書籍一覧を取得
+     */
+    public function available(): JsonResponse
+    {
+        // 貸出中でない書籍を取得
+        $books = Book::whereDoesntHave('borrows', function($query) {
+            $query->whereNull('returned_date');
+        })
+        ->orderBy('title')
+        ->get();
+
+        return response()->json([
+            'data' => $books,
+            'message' => 'Available books retrieved successfully'
+        ]);
+    }
+
     public function exportPdf(Request $request): Response
     {
         try {
@@ -398,12 +417,12 @@ class BookController extends Controller
             try {
                 if (file_exists($fontPath)) {
                     $fontname = \TCPDF_FONTS::addTTFfont($fontPath, 'TrueTypeUnicode', '', 96);
-                    \Log::info('Custom font loaded successfully', ['fontname' => $fontname]);
+                    Log::info('Custom font loaded successfully', ['fontname' => $fontname]);
                 } else {
-                    \Log::warning('Font file not found', ['path' => $fontPath]);
+                    Log::warning('Font file not found', ['path' => $fontPath]);
                 }
             } catch (Exception $e) {
-                \Log::error('Error loading custom font', ['error' => $e->getMessage()]);
+                Log::error('Error loading custom font', ['error' => $e->getMessage()]);
             }
 
             if ($fontname) {
@@ -714,10 +733,8 @@ class BookController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('PDF出力エラー: ' . $e->getMessage());
-            return response()->json([
-                'error' => 'PDF出力中にエラーが発生しました: ' . $e->getMessage()
-            ], 500);
+            Log::error('PDF出力エラー: ' . $e->getMessage());
+            return new Response('PDF出力中にエラーが発生しました: ' . $e->getMessage(), 500);
         }
     }
 }

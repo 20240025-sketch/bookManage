@@ -7,9 +7,11 @@
       </header>
       
       <nav class="bg-white rounded-lg shadow p-4 mb-6">
-        <div class="flex space-x-4">
+        <div class="flex space-x-6">
           <router-link to="/books" class="text-blue-600 hover:text-blue-800 font-medium">書籍一覧</router-link>
-          <router-link to="/books/create" class="text-blue-600 hover:text-blue-800 font-medium">新規登録</router-link>
+          <router-link to="/books/create" class="text-blue-600 hover:text-blue-800 font-medium">書籍登録</router-link>
+          <router-link to="/students" class="text-blue-600 hover:text-blue-800 font-medium">生徒一覧</router-link>
+          <router-link to="/borrows/create" class="text-blue-600 hover:text-blue-800 font-medium">貸出登録</router-link>
         </div>
       </nav>
       

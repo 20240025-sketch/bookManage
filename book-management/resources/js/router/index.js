@@ -5,6 +5,8 @@ const BookIndex = () => import('../pages/BookIndex.vue')
 const BookCreate = () => import('../pages/BookCreate.vue')
 const BookShow = () => import('../pages/BookShow.vue')
 const BookEdit = () => import('../pages/BookEdit.vue')
+const StudentIndex = () => import('../pages/StudentIndex.vue')
+const BorrowCreate = () => import('../pages/BorrowCreate.vue')
 
 const routes = [
   {
@@ -36,6 +38,18 @@ const routes = [
     component: BookEdit,
     meta: { title: '書籍編集' },
     props: true
+  },
+  {
+    path: '/students',
+    name: 'StudentIndex',
+    component: StudentIndex,
+    meta: { title: '生徒一覧' }
+  },
+  {
+    path: '/borrows/create',
+    name: 'BorrowCreate',
+    component: BorrowCreate,
+    meta: { title: '貸出登録' }
   }
 ]
 

@@ -3,6 +3,8 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\BookController;
+use App\Http\Controllers\BorrowController;
+use App\Http\Controllers\StudentController;
 
 // 個別ルートを先に定義
 Route::post('books/search-isbn', [BookController::class, 'searchByISBN']);
@@ -11,6 +13,16 @@ Route::get('books/pdf', [BookController::class, 'exportPdf']);
 
 // リソースルートを後に定義
 Route::apiResource('books', BookController::class);
+
+// 貸し借り管理のルート
+Route::apiResource('borrows', BorrowController::class);
+Route::patch('borrows/{borrow}/return', [BorrowController::class, 'returnBook']);
+Route::get('borrows/recent', [BorrowController::class, 'recent']);
+Route::get('books/available', [BookController::class, 'available']);
+
+// 生徒管理のルート
+Route::apiResource('students', StudentController::class);
+Route::get('students/{student}/borrows', [StudentController::class, 'getBorrows']);
 
 // テスト用エンドポイント
 Route::get('test-ndl/{isbn}', function($isbn) {

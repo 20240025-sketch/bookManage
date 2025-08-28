@@ -4,10 +4,19 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Book extends Model
 {
     use HasFactory;
+
+    /**
+     * Get the borrows for the book.
+     */
+    public function borrows(): HasMany
+    {
+        return $this->hasMany(Borrow::class);
+    }
 
     protected $fillable = [
         'title',

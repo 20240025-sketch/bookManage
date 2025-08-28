@@ -1,0 +1,461 @@
+<template>
+  &lt;div class=&quot;container mx-auto px-4 py-8&quot;&gt;
+    &lt;!-- ヘッダー --&gt;
+    &lt;div class=&quot;mb-6&quot;&gt;
+      &lt;div class=&quot;flex items-center justify-between&quot;&gt;
+        &lt;div&gt;
+          &lt;h1 class=&quot;text-2xl font-bold text-gray-900&quot;&gt;生徒一覧&lt;/h1&gt;
+          &lt;p class=&quot;mt-1 text-sm text-gray-600&quot;&gt;
+            登録されている生徒の一覧を表示します
+          &lt;/p&gt;
+        &lt;/div&gt;
+        &lt;div class=&quot;flex items-center space-x-3&quot;&gt;
+          &lt;button
+            @click=&quot;showCreateModal = true&quot;
+            class=&quot;bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md&quot;
+          &gt;
+            + 新規登録
+          &lt;/button&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+
+    &lt;!-- 検索フィルター --&gt;
+    &lt;div class=&quot;bg-white rounded-lg shadow p-6 mb-6&quot;&gt;
+      &lt;div class=&quot;grid grid-cols-1 md:grid-cols-3 gap-4&quot;&gt;
+        &lt;div&gt;
+          &lt;label for=&quot;searchName&quot; class=&quot;block text-sm font-medium text-gray-700 mb-1&quot;&gt;
+            名前で検索
+          &lt;/label&gt;
+          &lt;input
+            type=&quot;text&quot;
+            id=&quot;searchName&quot;
+            v-model=&quot;filters.name&quot;
+            class=&quot;w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500&quot;
+            placeholder=&quot;名前を入力...&quot;
+          /&gt;
+        &lt;/div&gt;
+        &lt;div&gt;
+          &lt;label for=&quot;searchGrade&quot; class=&quot;block text-sm font-medium text-gray-700 mb-1&quot;&gt;
+            学年
+          &lt;/label&gt;
+          &lt;select
+            id=&quot;searchGrade&quot;
+            v-model=&quot;filters.grade&quot;
+            class=&quot;w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500&quot;
+          &gt;
+            &lt;option value=&quot;&quot;&gt;すべて&lt;/option&gt;
+            &lt;option value=&quot;1&quot;&gt;1年&lt;/option&gt;
+            &lt;option value=&quot;2&quot;&gt;2年&lt;/option&gt;
+            &lt;option value=&quot;3&quot;&gt;3年&lt;/option&gt;
+          &lt;/select&gt;
+        &lt;/div&gt;
+        &lt;div&gt;
+          &lt;label for=&quot;searchClass&quot; class=&quot;block text-sm font-medium text-gray-700 mb-1&quot;&gt;
+            クラス
+          &lt;/label&gt;
+          &lt;select
+            id=&quot;searchClass&quot;
+            v-model=&quot;filters.class&quot;
+            class=&quot;w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500&quot;
+          &gt;
+            &lt;option value=&quot;&quot;&gt;すべて&lt;/option&gt;
+            &lt;option value=&quot;A&quot;&gt;A組&lt;/option&gt;
+            &lt;option value=&quot;B&quot;&gt;B組&lt;/option&gt;
+            &lt;option value=&quot;C&quot;&gt;C組&lt;/option&gt;
+            &lt;option value=&quot;D&quot;&gt;D組&lt;/option&gt;
+          &lt;/select&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+
+    &lt;!-- 生徒一覧 --&gt;
+    &lt;div class=&quot;bg-white rounded-lg shadow overflow-hidden&quot;&gt;
+      &lt;table class=&quot;min-w-full divide-y divide-gray-200&quot;&gt;
+        &lt;thead class=&quot;bg-gray-50&quot;&gt;
+          &lt;tr&gt;
+            &lt;th class=&quot;px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider&quot;&gt;
+              学籍番号
+            &lt;/th&gt;
+            &lt;th class=&quot;px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider&quot;&gt;
+              名前
+            &lt;/th&gt;
+            &lt;th class=&quot;px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider&quot;&gt;
+              学年・クラス
+            &lt;/th&gt;
+            &lt;th class=&quot;px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider&quot;&gt;
+              メールアドレス
+            &lt;/th&gt;
+            &lt;th class=&quot;px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider&quot;&gt;
+              貸出中の本
+            &lt;/th&gt;
+            &lt;th class=&quot;px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider&quot;&gt;
+              操作
+            &lt;/th&gt;
+          &lt;/tr&gt;
+        &lt;/thead&gt;
+        &lt;tbody class=&quot;bg-white divide-y divide-gray-200&quot;&gt;
+          &lt;tr v-for=&quot;student in filteredStudents&quot; :key=&quot;student.id&quot;&gt;
+            &lt;td class=&quot;px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900&quot;&gt;
+              {{ student.student_number }}
+            &lt;/td&gt;
+            &lt;td class=&quot;px-6 py-4 whitespace-nowrap text-sm text-gray-900&quot;&gt;
+              {{ student.name }}
+              &lt;span v-if=&quot;student.name_transcription&quot; class=&quot;text-gray-500 text-xs ml-2&quot;&gt;
+                ({{ student.name_transcription }})
+              &lt;/span&gt;
+            &lt;/td&gt;
+            &lt;td class=&quot;px-6 py-4 whitespace-nowrap text-sm text-gray-900&quot;&gt;
+              {{ student.grade }}年{{ student.class }}組
+            &lt;/td&gt;
+            &lt;td class=&quot;px-6 py-4 whitespace-nowrap text-sm text-gray-900&quot;&gt;
+              {{ student.email }}
+            &lt;/td&gt;
+            &lt;td class=&quot;px-6 py-4 whitespace-nowrap text-sm text-gray-900&quot;&gt;
+              {{ student.active_borrows_count || 0 }}冊
+            &lt;/td&gt;
+            &lt;td class=&quot;px-6 py-4 whitespace-nowrap text-right text-sm font-medium&quot;&gt;
+              &lt;button
+                @click=&quot;showBorrowHistory(student)&quot;
+                class=&quot;text-indigo-600 hover:text-indigo-900 mr-4&quot;
+              &gt;
+                貸出履歴
+              &lt;/button&gt;
+              &lt;button
+                @click=&quot;editStudent(student)&quot;
+                class=&quot;text-blue-600 hover:text-blue-900&quot;
+              &gt;
+                編集
+              &lt;/button&gt;
+            &lt;/td&gt;
+          &lt;/tr&gt;
+        &lt;/tbody&gt;
+      &lt;/table&gt;
+    &lt;/div&gt;
+
+    &lt;!-- 生徒登録/編集モーダル --&gt;
+    &lt;div v-if=&quot;showCreateModal || showEditModal&quot; class=&quot;fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center&quot;&gt;
+      &lt;div class=&quot;bg-white rounded-lg p-8 max-w-lg w-full&quot;&gt;
+        &lt;h2 class=&quot;text-xl font-bold mb-4&quot;&gt;
+          {{ showEditModal ? &#39;生徒情報の編集&#39; : &#39;新規生徒登録&#39; }}
+        &lt;/h2&gt;
+        &lt;form @submit.prevent=&quot;showEditModal ? updateStudent() : createStudent()&quot;&gt;
+          &lt;div class=&quot;space-y-4&quot;&gt;
+            &lt;div&gt;
+              &lt;label for=&quot;studentNumber&quot; class=&quot;block text-sm font-medium text-gray-700&quot;&gt;
+                学籍番号 *
+              &lt;/label&gt;
+              &lt;input
+                id=&quot;studentNumber&quot;
+                v-model=&quot;form.student_number&quot;
+                type=&quot;text&quot;
+                required
+                class=&quot;mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500&quot;
+              /&gt;
+            &lt;/div&gt;
+            &lt;div&gt;
+              &lt;label for=&quot;name&quot; class=&quot;block text-sm font-medium text-gray-700&quot;&gt;
+                名前 *
+              &lt;/label&gt;
+              &lt;input
+                id=&quot;name&quot;
+                v-model=&quot;form.name&quot;
+                type=&quot;text&quot;
+                required
+                class=&quot;mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500&quot;
+              /&gt;
+            &lt;/div&gt;
+            &lt;div&gt;
+              &lt;label for=&quot;nameTranscription&quot; class=&quot;block text-sm font-medium text-gray-700&quot;&gt;
+                フリガナ
+              &lt;/label&gt;
+              &lt;input
+                id=&quot;nameTranscription&quot;
+                v-model=&quot;form.name_transcription&quot;
+                type=&quot;text&quot;
+                class=&quot;mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500&quot;
+              /&gt;
+            &lt;/div&gt;
+            &lt;div&gt;
+              &lt;label for=&quot;email&quot; class=&quot;block text-sm font-medium text-gray-700&quot;&gt;
+                メールアドレス *
+              &lt;/label&gt;
+              &lt;input
+                id=&quot;email&quot;
+                v-model=&quot;form.email&quot;
+                type=&quot;email&quot;
+                required
+                class=&quot;mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500&quot;
+              /&gt;
+            &lt;/div&gt;
+            &lt;div class=&quot;grid grid-cols-2 gap-4&quot;&gt;
+              &lt;div&gt;
+                &lt;label for=&quot;grade&quot; class=&quot;block text-sm font-medium text-gray-700&quot;&gt;
+                  学年 *
+                &lt;/label&gt;
+                &lt;select
+                  id=&quot;grade&quot;
+                  v-model=&quot;form.grade&quot;
+                  required
+                  class=&quot;mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500&quot;
+                &gt;
+                  &lt;option value=&quot;1&quot;&gt;1年&lt;/option&gt;
+                  &lt;option value=&quot;2&quot;&gt;2年&lt;/option&gt;
+                  &lt;option value=&quot;3&quot;&gt;3年&lt;/option&gt;
+                &lt;/select&gt;
+              &lt;/div&gt;
+              &lt;div&gt;
+                &lt;label for=&quot;class&quot; class=&quot;block text-sm font-medium text-gray-700&quot;&gt;
+                  クラス *
+                &lt;/label&gt;
+                &lt;select
+                  id=&quot;class&quot;
+                  v-model=&quot;form.class&quot;
+                  required
+                  class=&quot;mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500&quot;
+                &gt;
+                  &lt;option value=&quot;A&quot;&gt;A組&lt;/option&gt;
+                  &lt;option value=&quot;B&quot;&gt;B組&lt;/option&gt;
+                  &lt;option value=&quot;C&quot;&gt;C組&lt;/option&gt;
+                  &lt;option value=&quot;D&quot;&gt;D組&lt;/option&gt;
+                &lt;/select&gt;
+              &lt;/div&gt;
+            &lt;/div&gt;
+          &lt;/div&gt;
+          &lt;div class=&quot;mt-6 flex justify-end space-x-3&quot;&gt;
+            &lt;button
+              type=&quot;button&quot;
+              @click=&quot;closeModal&quot;
+              class=&quot;px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md shadow-sm hover:bg-gray-50&quot;
+            &gt;
+              キャンセル
+            &lt;/button&gt;
+            &lt;button
+              type=&quot;submit&quot;
+              class=&quot;px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700&quot;
+            &gt;
+              {{ showEditModal ? &#39;更新&#39; : &#39;登録&#39; }}
+            &lt;/button&gt;
+          &lt;/div&gt;
+        &lt;/form&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+
+    &lt;!-- 貸出履歴モーダル --&gt;
+    &lt;div v-if=&quot;showBorrowModal&quot; class=&quot;fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center&quot;&gt;
+      &lt;div class=&quot;bg-white rounded-lg p-8 max-w-4xl w-full max-h-[80vh] overflow-y-auto&quot;&gt;
+        &lt;div class=&quot;flex justify-between items-center mb-6&quot;&gt;
+          &lt;h2 class=&quot;text-xl font-bold&quot;&gt;
+            {{ selectedStudent?.name }}さんの貸出履歴
+          &lt;/h2&gt;
+          &lt;button
+            @click=&quot;showBorrowModal = false&quot;
+            class=&quot;text-gray-400 hover:text-gray-500&quot;
+          &gt;
+            &lt;span class=&quot;sr-only&quot;&gt;閉じる&lt;/span&gt;
+            &lt;svg class=&quot;h-6 w-6&quot; fill=&quot;none&quot; viewBox=&quot;0 0 24 24&quot; stroke=&quot;currentColor&quot;&gt;
+              &lt;path stroke-linecap=&quot;round&quot; stroke-linejoin=&quot;round&quot; stroke-width=&quot;2&quot; d=&quot;M6 18L18 6M6 6l12 12&quot; /&gt;
+            &lt;/svg&gt;
+          &lt;/button&gt;
+        &lt;/div&gt;
+
+        &lt;div class=&quot;space-y-4&quot;&gt;
+          &lt;div v-if=&quot;selectedStudent?.active_borrows?.length &gt; 0&quot; class=&quot;border-b pb-4&quot;&gt;
+            &lt;h3 class=&quot;text-lg font-medium mb-3&quot;&gt;現在借りている本&lt;/h3&gt;
+            &lt;ul class=&quot;space-y-2&quot;&gt;
+              &lt;li v-for=&quot;borrow in selectedStudent.active_borrows&quot; :key=&quot;borrow.id&quot; class=&quot;flex justify-between items-center&quot;&gt;
+                &lt;div&gt;
+                  &lt;span class=&quot;font-medium&quot;&gt;{{ borrow.book.title }}&lt;/span&gt;
+                  &lt;span class=&quot;text-sm text-gray-500&quot;&gt;
+                    ({{ formatDate(borrow.borrowed_date) }}から)
+                  &lt;/span&gt;
+                &lt;/div&gt;
+                &lt;button
+                  @click=&quot;returnBook(borrow)&quot;
+                  class=&quot;px-3 py-1 text-sm text-white bg-green-600 rounded-md hover:bg-green-700&quot;
+                &gt;
+                  返却
+                &lt;/button&gt;
+              &lt;/li&gt;
+            &lt;/ul&gt;
+          &lt;/div&gt;
+
+          &lt;div&gt;
+            &lt;h3 class=&quot;text-lg font-medium mb-3&quot;&gt;貸出履歴&lt;/h3&gt;
+            &lt;div class=&quot;bg-white shadow overflow-hidden rounded-md&quot;&gt;
+              &lt;ul class=&quot;divide-y divide-gray-200&quot;&gt;
+                &lt;li v-for=&quot;borrow in selectedStudent?.borrow_history&quot; :key=&quot;borrow.id&quot; class=&quot;px-4 py-3&quot;&gt;
+                  &lt;div class=&quot;flex justify-between items-start&quot;&gt;
+                    &lt;div&gt;
+                      &lt;p class=&quot;font-medium&quot;&gt;{{ borrow.book.title }}&lt;/p&gt;
+                      &lt;p class=&quot;text-sm text-gray-500&quot;&gt;
+                        {{ formatDate(borrow.borrowed_date) }} - 
+                        {{ borrow.returned_date ? formatDate(borrow.returned_date) : &#39;未返却&#39; }}
+                      &lt;/p&gt;
+                    &lt;/div&gt;
+                    &lt;span
+                      :class=&quot;[
+                        &#39;px-2 py-1 text-xs rounded-full&#39;,
+                        borrow.returned_date
+                          ? &#39;bg-green-100 text-green-800&#39;
+                          : &#39;bg-yellow-100 text-yellow-800&#39;
+                      ]&quot;
+                    &gt;
+                      {{ borrow.returned_date ? &#39;返却済み&#39; : &#39;貸出中&#39; }}
+                    &lt;/span&gt;
+                  &lt;/div&gt;
+                &lt;/li&gt;
+              &lt;/ul&gt;
+            &lt;/div&gt;
+          &lt;/div&gt;
+        &lt;/div&gt;
+      &lt;/div&gt;
+    &lt;/div&gt;
+  &lt;/div&gt;
+&lt;/template&gt;
+
+&lt;script setup&gt;
+import { ref, computed } from &#39;vue&#39;;
+import axios from &#39;axios&#39;;
+
+const students = ref([]);
+const loading = ref(true);
+const error = ref(&#39;&#39;);
+
+const showCreateModal = ref(false);
+const showEditModal = ref(false);
+const showBorrowModal = ref(false);
+const selectedStudent = ref(null);
+
+const filters = ref({
+  name: &#39;&#39;,
+  grade: &#39;&#39;,
+  class: &#39;&#39;
+});
+
+const form = ref({
+  student_number: &#39;&#39;,
+  name: &#39;&#39;,
+  name_transcription: &#39;&#39;,
+  email: &#39;&#39;,
+  grade: &#39;1&#39;,
+  class: &#39;A&#39;
+});
+
+// フィルター適用後の生徒リスト
+const filteredStudents = computed(() =&gt; {
+  return students.value.filter(student =&gt; {
+    if (filters.value.name &amp;&amp; !student.name.includes(filters.value.name)) {
+      return false;
+    }
+    if (filters.value.grade &amp;&amp; student.grade !== filters.value.grade) {
+      return false;
+    }
+    if (filters.value.class &amp;&amp; student.class !== filters.value.class) {
+      return false;
+    }
+    return true;
+  });
+});
+
+// 生徒一覧の取得
+const loadStudents = async () =&gt; {
+  try {
+    loading.value = true;
+    const response = await axios.get(&#39;/api/students&#39;);
+    students.value = response.data.data;
+  } catch (err) {
+    error.value = &#39;生徒情報の取得に失敗しました&#39;;
+    console.error(err);
+  } finally {
+    loading.value = false;
+  }
+};
+
+// 生徒の登録
+const createStudent = async () =&gt; {
+  try {
+    const response = await axios.post(&#39;/api/students&#39;, form.value);
+    students.value.push(response.data.data);
+    closeModal();
+  } catch (err) {
+    error.value = &#39;生徒の登録に失敗しました&#39;;
+    console.error(err);
+  }
+};
+
+// 生徒情報の更新
+const updateStudent = async () =&gt; {
+  try {
+    const response = await axios.put(`/api/students/${selectedStudent.value.id}`, form.value);
+    const index = students.value.findIndex(s =&gt; s.id === selectedStudent.value.id);
+    if (index !== -1) {
+      students.value[index] = response.data.data;
+    }
+    closeModal();
+  } catch (err) {
+    error.value = &#39;生徒情報の更新に失敗しました&#39;;
+    console.error(err);
+  }
+};
+
+// 編集モーダルを開く
+const editStudent = (student) =&gt; {
+  selectedStudent.value = student;
+  form.value = { ...student };
+  showEditModal.value = true;
+};
+
+// 貸出履歴モーダルを開く
+const showBorrowHistory = async (student) =&gt; {
+  try {
+    const response = await axios.get(`/api/students/${student.id}/borrows`);
+    selectedStudent.value = {
+      ...student,
+      active_borrows: response.data.active_borrows,
+      borrow_history: response.data.borrow_history
+    };
+    showBorrowModal.value = true;
+  } catch (err) {
+    error.value = &#39;貸出履歴の取得に失敗しました&#39;;
+    console.error(err);
+  }
+};
+
+// 本の返却処理
+const returnBook = async (borrow) =&gt; {
+  try {
+    await axios.patch(`/api/borrows/${borrow.id}/return`);
+    // 貸出履歴を再読み込み
+    await showBorrowHistory(selectedStudent.value);
+  } catch (err) {
+    error.value = &#39;本の返却処理に失敗しました&#39;;
+    console.error(err);
+  }
+};
+
+// モーダルを閉じる
+const closeModal = () =&gt; {
+  showCreateModal.value = false;
+  showEditModal.value = false;
+  selectedStudent.value = null;
+  form.value = {
+    student_number: &#39;&#39;,
+    name: &#39;&#39;,
+    name_transcription: &#39;&#39;,
+    email: &#39;&#39;,
+    grade: &#39;1&#39;,
+    class: &#39;A&#39;
+  };
+};
+
+// 日付のフォーマット
+const formatDate = (dateString) =&gt; {
+  return new Date(dateString).toLocaleDateString(&#39;ja-JP&#39;);
+};
+
+// コンポーネントのマウント時に生徒一覧を取得
+onMounted(() =&gt; {
+  loadStudents();
+});
+&lt;/script&gt;
