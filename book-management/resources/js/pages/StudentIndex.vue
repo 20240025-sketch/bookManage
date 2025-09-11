@@ -66,7 +66,8 @@
             <option value="総合２">総合２</option>
             <option value="総合３">総合３</option>
             <option value="情報会計">情報会計</option>
-            <option value="工業">工業</option>
+            <option value="福祉">福祉</option>
+            <option value="調理">調理</option>
           </select>
         </div>
       </div>
