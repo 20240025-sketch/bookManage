@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>受け入れ元入力テスト</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f9f9f9;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        .hint {
+            margin-top: 5px;
+            font-size: 14px;
+            color: #666;
+        }
+        .sources {
+            margin-top: 20px;
+            padding: 15px;
+            background: white;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        .sources h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        .sources ul {
+            margin: 0;
+            padding-left: 20px;
+        }
+        .sources li {
+            margin: 5px 0;
+        }
+        .loading {
+            color: #007bff;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <h1>📚 受け入れ元入力機能テスト</h1>
+    
+    <div class="form-group">
+        <label for="acceptance_source">
+            受け入れ元 
+            <span style="font-weight: normal; color: #666;">（選択または自由入力）</span>
+        </label>
+        <input
+            id="acceptance_source"
+            list="acceptance_source_options"
+            type="text"
+            placeholder="選択または入力してください"
+            oninput="updateValue(this.value)"
+        />
+        <datalist id="acceptance_source_options">
+            <!-- 動的に読み込まれる候補がここに入る -->
+        </datalist>
+        <div class="hint">
+            💡 入力欄をクリックして候補から選択するか、直接入力してください
+        </div>
+    </div>
+
+    <div>
+        <strong>入力値:</strong> <span id="current-value">（未入力）</span>
+    </div>
+
+    <div class="sources">
+        <h3>📋 利用可能な候補</h3>
+        <div id="loading-message" class="loading">候補を読み込み中...</div>
+        <ul id="sources-list" style="display: none;"></ul>
+    </div>
+
+    <script>
+        // 現在の値を表示
+        function updateValue(value) {
+            document.getElementById('current-value').textContent = value || '（未入力）';
+        }
+
+        // 受け入れ元候補を読み込み
+        async function loadAcceptanceSources() {
+            try {
+                const response = await fetch('/api/books/acceptance-sources', {
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                
+                if (data.sources && Array.isArray(data.sources)) {
+                    updateDatalist(data.sources);
+                    updateSourcesList(data.sources);
+                    document.getElementById('loading-message').style.display = 'none';
+                    document.getElementById('sources-list').style.display = 'block';
+                } else {
+                    throw new Error('Invalid data format');
+                }
+
+            } catch (error) {
+                console.error('候補の読み込みエラー:', error);
+                document.getElementById('loading-message').textContent = 
+                    'エラー: ' + error.message;
+            }
+        }
+
+        // datalistを更新
+        function updateDatalist(sources) {
+            const datalist = document.getElementById('acceptance_source_options');
+            datalist.innerHTML = '';
+            
+            sources.forEach(source => {
+                const option = document.createElement('option');
+                option.value = source;
+                datalist.appendChild(option);
+            });
+        }
+
+        // 候補リストを表示
+        function updateSourcesList(sources) {
+            const list = document.getElementById('sources-list');
+            list.innerHTML = '';
+            
+            sources.forEach(source => {
+                const li = document.createElement('li');
+                li.textContent = source;
+                li.style.cursor = 'pointer';
+                li.onclick = () => {
+                    document.getElementById('acceptance_source').value = source;
+                    updateValue(source);
+                };
+                list.appendChild(li);
+            });
+        }
+
+        // ページ読み込み時に実行
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAcceptanceSources();
+        });
+    </script>
+</body>
+</html>

@@ -385,7 +385,6 @@ class BookController extends Controller
     public function exportPdf(Request $request): Response
     {
         try {
-
             $query = Book::query();
 
             // NDC分類フィルター
@@ -404,6 +403,7 @@ class BookController extends Controller
             // 受入年月日の早い順（古い順）でソート
             $books = $query->orderBy('acceptance_date', 'asc')->get();
 
+            // TCPDFのセットアップ
             $pdf = new \TCPDF('L', 'mm', 'A4', true, 'UTF-8', false);
 
             $pdf->SetCreator('蔵書管理システム');
@@ -411,330 +411,216 @@ class BookController extends Controller
             $pdf->SetTitle('書籍一覧');
             $pdf->SetSubject('書籍一覧PDF');
 
-            $fontname = null;
-            $fontPath = public_path('seieiIPAexMincho.ttf');
-            
-            try {
-                if (file_exists($fontPath)) {
-                    $fontname = \TCPDF_FONTS::addTTFfont($fontPath, 'TrueTypeUnicode', '', 96);
-                    Log::info('Custom font loaded successfully', ['fontname' => $fontname]);
-                } else {
-                    Log::warning('Font file not found', ['path' => $fontPath]);
-                }
-            } catch (Exception $e) {
-                Log::error('Error loading custom font', ['error' => $e->getMessage()]);
-            }
-
-            if ($fontname) {
-                $pdf->SetFont($fontname, '', 9);
-            } else {
-                try {
-                    $pdf->SetFont('dejavusans', '', 9);
-                } catch (Exception $e) {
-                    try {
-                        $pdf->SetFont('freeserif', '', 9);
-                    } catch (Exception $e) {
-                        try {
-                            $pdf->SetFont('cid0jp', '', 9);
-                        } catch (Exception $e) {
-                            $pdf->SetFont('helvetica', '', 9);
-                        }
-                    }
-                }
-            }
+            // フォントの設定
+            $this->setPdfFont($pdf);
 
             $pdf->setPrintHeader(false);
             $pdf->setPrintFooter(false);
-
             $pdf->SetMargins(10, 10, 10);
             $pdf->SetAutoPageBreak(true, 10);
 
             $pdf->AddPage();
 
-            if ($fontname) {
-                $pdf->SetFont($fontname, 'B', 16);
-            } else {
-                try {
-                    $pdf->SetFont('dejavusans', 'B', 16);
-                } catch (Exception $e) {
-                    try {
-                        $pdf->SetFont('freeserif', 'B', 16);
-                    } catch (Exception $e) {
-                        $pdf->SetFont('helvetica', 'B', 16);
-                    }
-                }
-            }
+            // タイトル
+            $pdf->SetFont('dejavusans', 'B', 16);
             $pdf->Cell(0, 10, '書籍一覧', 0, 1, 'C');
             $pdf->Ln(5);
 
-            if ($fontname) {
-                $pdf->SetFont($fontname, '', 10);
-            } else {
-                try {
-                    $pdf->SetFont('dejavusans', '', 10);
-                } catch (Exception $e) {
-                    try {
-                        $pdf->SetFont('freeserif', '', 10);
-                    } catch (Exception $e) {
-                        $pdf->SetFont('helvetica', '', 10);
-                    }
-                }
-            }
+            // 出力日時とフィルター条件の表示
+            $this->addPdfHeader($pdf, $request);
 
-            // フィルター条件の表示
-            $filterText = '';
-            if ($request->filled('ndc')) {
-                $ndcMap = [
-                    '0' => '総記',
-                    '1' => '哲学',
-                    '2' => '歴史',
-                    '3' => '社会科学',
-                    '4' => '自然科学',
-                    '5' => '技術・工学',
-                    '6' => '産業',
-                    '7' => '芸術・美術',
-                    '8' => '言語',
-                    '9' => '文学'
-                ];
-                $ndcValue = $request->ndc;
-                $filterText .= 'NDC分類: ' . $ndcValue . ' ' . ($ndcMap[$ndcValue] ?? '') . '　';
-            }
-            if ($request->filled('start_date') || $request->filled('end_date')) {
-                $filterText .= '受入期間: ';
-                if ($request->filled('start_date')) {
-                    $filterText .= date('Y年m月d日', strtotime($request->start_date));
-                }
-                $filterText .= ' ～ ';
-                if ($request->filled('end_date')) {
-                    $filterText .= date('Y年m月d日', strtotime($request->end_date));
-                }
-            }
+            // テーブルヘッダー
+            $this->addTableHeaders($pdf);
 
-            $pdf->Cell(0, 8, '出力日時: ' . date('Y年m月d日 H:i'), 0, 1, 'R');
-            if ($filterText) {
-                $pdf->Cell(0, 8, 'フィルター条件: ' . $filterText, 0, 1, 'L');
-            }
-            $pdf->Ln(3);
+            // データ行
+            $this->addTableData($pdf, $books);
 
-            if ($fontname) {
-                $pdf->SetFont($fontname, 'B', 8);
-            } else {
-                try {
-                    $pdf->SetFont('dejavusans', 'B', 8);
-                } catch (Exception $e) {
-                    try {
-                        $pdf->SetFont('freeserif', 'B', 8);
-                    } catch (Exception $e) {
-                        $pdf->SetFont('helvetica', 'B', 8);
-                    }
-                }
-            }
-            $pdf->SetFillColor(240, 240, 240);
-            
-            $headers = [
-                '受入年月日' => 25,
-                'タイトル' => 50,
-                '著者' => 35,
-                '出版社' => 30,
-                '出版日' => 20,
-                'ページ数' => 15,
-                '受入種別' => 20,
-                '受け入れ元' => 25,
-                '価格' => 15,
-                '図書分類' => 20
-            ];
-
-            foreach ($headers as $header => $width) {
-                $pdf->Cell($width, 8, $header, 1, 0, 'C', true);
-            }
-            $pdf->Ln();
-
-            if ($fontname) {
-                $pdf->SetFont($fontname, '', 7);
-            } else {
-                try {
-                    $pdf->SetFont('dejavusans', '', 7);
-                } catch (Exception $e) {
-                    try {
-                        $pdf->SetFont('freeserif', '', 7);
-                    } catch (Exception $e) {
-                        $pdf->SetFont('helvetica', '', 7);
-                    }
-                }
-            }
-            $pdf->SetFillColor(255, 255, 255);
-
-            foreach ($books as $book) {
-                // ページの有効高さを計算（A4横向きの場合: 210mm - 上下余白20mm = 190mm）
-                $pageHeight = 210 - 20; // A4横向き - 上下余白
-                $currentY = $pdf->GetY();
-                
-                // 次の行を追加した時にページをはみ出すかチェック
-                if ($currentY > ($pageHeight - 10)) { // 余裕を持って10mm手前で改ページ
-                    $pdf->AddPage();
-                    
-                    if ($fontname) {
-                        $pdf->SetFont($fontname, 'B', 8);
-                    } else {
-                        try {
-                            $pdf->SetFont('dejavusans', 'B', 8);
-                        } catch (Exception $e) {
-                            try {
-                                $pdf->SetFont('freeserif', 'B', 8);
-                            } catch (Exception $e) {
-                                $pdf->SetFont('helvetica', 'B', 8);
-                            }
-                        }
-                    }
-                    $pdf->SetFillColor(240, 240, 240);
-                    
-                    foreach ($headers as $header => $width) {
-                        $pdf->Cell($width, 8, $header, 1, 0, 'C', true);
-                    }
-                    $pdf->Ln();
-                    
-                    if ($fontname) {
-                        $pdf->SetFont($fontname, '', 7);
-                    } else {
-                        try {
-                            $pdf->SetFont('dejavusans', '', 7);
-                        } catch (Exception $e) {
-                            try {
-                                $pdf->SetFont('freeserif', '', 7);
-                            } catch (Exception $e) {
-                                $pdf->SetFont('helvetica', '', 7);
-                            }
-                        }
-                    }
-                    $pdf->SetFillColor(255, 255, 255);
-                }
-
-                $yomiInitial = $book->title_transcription ? mb_substr($book->title_transcription, 0, 1, 'UTF-8') : '';
-                
-                // 図書分類の作成 (NDC分類 + ヨミ頭文字)
-                $classification = '';
-                if ($book->ndc && $yomiInitial) {
-                    $classification = $book->ndc . '-' . $yomiInitial;
-                } elseif ($book->ndc) {
-                    $classification = $book->ndc;
-                } elseif ($yomiInitial) {
-                    $classification = $yomiInitial;
-                }
-
-                $rowData = [
-                    $book->acceptance_date ? $book->acceptance_date->format('Y/m/d') : '',
-                    $book->title ?: '',
-                    $book->author ?: '',
-                    $book->publisher ?: '',
-                    $book->published_date ? $book->published_date->format('Y/m/d') : '',
-                    $book->pages ?: '',
-                    $book->acceptance_type ?: '',
-                    $book->acceptance_source ?: '',
-                    $book->price ? number_format($book->price) . '円' : '',
-                    $classification
-                ];
-
-                $requiredLines = 1;
-                $colWidths = array_values($headers);
-                
-                $longTextColumns = [1, 2, 3];
-                foreach ($longTextColumns as $colIndex) {
-                    $text = $rowData[$colIndex];
-                    if (!empty($text)) {
-                        $width = $colWidths[$colIndex];
-                        $textWidth = $pdf->GetStringWidth($text);
-                        $lines = ceil($textWidth / ($width - 2));
-                        $requiredLines = max($requiredLines, $lines);
-                    }
-                }
-                
-                $requiredLines = min($requiredLines, 3);
-                $cellHeight = $requiredLines * 4.5;
-
-                $startY = $pdf->GetY();
-                $startX = $pdf->GetX();
-
-                $colIndex = 0;
-                $currentX = $startX;
-                
-                foreach ($rowData as $data) {
-                    $width = $colWidths[$colIndex];
-                    
-                    if (!mb_check_encoding($data, 'UTF-8')) {
-                        $data = mb_convert_encoding($data, 'UTF-8', 'auto');
-                    }
-                    
-                    $pdf->Rect($currentX, $startY, $width, $cellHeight);
-                    
-                    if (in_array($colIndex, [1, 2, 3]) && !empty($data)) {
-                        $lines = [];
-                        $words = mb_str_split($data, 1, 'UTF-8');
-                        $currentLine = '';
-                        
-                        foreach ($words as $char) {
-                            $testLine = $currentLine . $char;
-                            $testWidth = $pdf->GetStringWidth($testLine);
-                            
-                            if ($testWidth > ($width - 2) && !empty($currentLine)) {
-                                $lines[] = $currentLine;
-                                $currentLine = $char;
-                            } else {
-                                $currentLine = $testLine;
-                            }
-                        }
-                        
-                        if (!empty($currentLine)) {
-                            $lines[] = $currentLine;
-                        }
-                        
-                        $lines = array_slice($lines, 0, $requiredLines);
-                        
-                        foreach ($lines as $lineIndex => $line) {
-                            $lineY = $startY + 1.0 + ($lineIndex * 4.5);
-                            $pdf->SetXY($currentX + 1, $lineY);
-                            $pdf->Cell($width - 2, 3, $line, 0, 0, 'L', false);
-                        }
-                    } else {
-                        $textY = $startY + ($cellHeight / 2) - 1.75;
-                        $pdf->SetXY($currentX, $textY);
-                        $pdf->Cell($width, 3, $data, 0, 0, 'C', false);
-                    }
-                    
-                    $currentX += $width;
-                    $colIndex++;
-                }
-                
-                $pdf->SetXY($startX, $startY + $cellHeight);
-            }
-
-            // フッター（ページ番号）を現在位置に追加
-            $pdf->Ln(5); // 少し間隔を空ける
-            if ($fontname) {
-                $pdf->SetFont($fontname, '', 8);
-            } else {
-                try {
-                    $pdf->SetFont('dejavusans', '', 8);
-                } catch (Exception $e) {
-                    try {
-                        $pdf->SetFont('freeserif', '', 8);
-                    } catch (Exception $e) {
-                        $pdf->SetFont('helvetica', '', 8);
-                    }
-                }
-            }
-            $pdf->Cell(0, 8, 'ページ ' . $pdf->getAliasNumPage() . ' / ' . $pdf->getAliasNbPages(), 0, 0, 'C');
-
+            // PDFの出力
             $filename = '書籍一覧_' . date('Ymd_His') . '.pdf';
+            $pdfContent = $pdf->Output($filename, 'S');
             
-            return response($pdf->Output($filename, 'S'), 200, [
+            return response($pdfContent, 200, [
                 'Content-Type' => 'application/pdf',
                 'Content-Disposition' => 'attachment; filename="' . $filename . '"',
-                'Content-Length' => strlen($pdf->Output($filename, 'S')),
+                'Content-Length' => strlen($pdfContent),
             ]);
 
         } catch (\Exception $e) {
             Log::error('PDF出力エラー: ' . $e->getMessage());
-            return new Response('PDF出力中にエラーが発生しました: ' . $e->getMessage(), 500);
+            Log::error('PDF出力エラー詳細: ', ['trace' => $e->getTraceAsString()]);
+            
+            return response()->json([
+                'error' => 'PDF出力中にエラーが発生しました',
+                'message' => $e->getMessage()
+            ], 500);
         }
+    }
+
+    /**
+     * PDFのフォントを設定する
+     */
+    private function setPdfFont($pdf)
+    {
+        try {
+            $pdf->SetFont('dejavusans', '', 9);
+        } catch (\Exception $e) {
+            Log::warning('DejaVu Sans font not available, using fallback');
+            try {
+                $pdf->SetFont('helvetica', '', 9);
+            } catch (\Exception $e) {
+                Log::error('Font setting failed: ' . $e->getMessage());
+                throw new \Exception('フォントの設定に失敗しました');
+            }
+        }
+    }
+
+    /**
+     * PDFヘッダー情報を追加する
+     */
+    private function addPdfHeader($pdf, $request)
+    {
+        $pdf->SetFont('dejavusans', '', 10);
+        
+        // 出力日時
+        $pdf->Cell(0, 8, '出力日時: ' . date('Y年m月d日 H:i'), 0, 1, 'R');
+        
+        // フィルター条件
+        $filterText = '';
+        if ($request->filled('ndc')) {
+            $ndcMap = [
+                '0' => '総記', '1' => '哲学', '2' => '歴史', '3' => '社会科学', '4' => '自然科学',
+                '5' => '技術・工学', '6' => '産業', '7' => '芸術・美術', '8' => '言語', '9' => '文学'
+            ];
+            $ndcValue = $request->ndc;
+            $filterText .= 'NDC分類: ' . $ndcValue . ' ' . ($ndcMap[$ndcValue] ?? '') . '　';
+        }
+        
+        if ($request->filled('start_date') || $request->filled('end_date')) {
+            $filterText .= '受入期間: ';
+            if ($request->filled('start_date')) {
+                $filterText .= date('Y年m月d日', strtotime($request->start_date));
+            }
+            $filterText .= ' ～ ';
+            if ($request->filled('end_date')) {
+                $filterText .= date('Y年m月d日', strtotime($request->end_date));
+            }
+        }
+        
+        if ($filterText) {
+            $pdf->Cell(0, 8, 'フィルター条件: ' . $filterText, 0, 1, 'L');
+        }
+        $pdf->Ln(3);
+    }
+
+    /**
+     * テーブルヘッダーを追加する
+     */
+    private function addTableHeaders($pdf)
+    {
+        $pdf->SetFont('dejavusans', 'B', 8);
+        $pdf->SetFillColor(240, 240, 240);
+        
+        $headers = [
+            '受入年月日' => 25, 'タイトル' => 50, '著者' => 35, '出版社' => 30, '出版日' => 20,
+            'ページ数' => 15, '受入種別' => 20, '受入元' => 25, '価格' => 15, '図書分類' => 20
+        ];
+
+        foreach ($headers as $header => $width) {
+            $pdf->Cell($width, 8, $header, 1, 0, 'C', true);
+        }
+        $pdf->Ln();
+        
+        return $headers;
+    }
+
+    /**
+     * テーブルデータを追加する
+     */
+    private function addTableData($pdf, $books)
+    {
+        $pdf->SetFont('dejavusans', '', 7);
+        $pdf->SetFillColor(255, 255, 255);
+        
+        $headers = $this->addTableHeaders($pdf);
+        $colWidths = array_values($headers);
+
+        foreach ($books as $book) {
+            // 改ページの判定
+            if ($pdf->GetY() > 180) { // A4横向きの場合
+                $pdf->AddPage();
+                $this->addTableHeaders($pdf);
+                $pdf->SetFont('dejavusans', '', 7);
+            }
+
+            // データの準備
+            $classification = $this->getBookClassification($book);
+            
+            $rowData = [
+                $book->acceptance_date ? $book->acceptance_date->format('Y/m/d') : '',
+                $this->sanitizeText($book->title ?: ''),
+                $this->sanitizeText($book->author ?: ''),
+                $this->sanitizeText($book->publisher ?: ''),
+                $book->published_date ? $book->published_date->format('Y/m/d') : '',
+                $book->pages ?: '',
+                $this->sanitizeText($book->acceptance_type ?: ''),
+                $this->sanitizeText($book->acceptance_source ?: ''),
+                $book->price ? number_format($book->price) . '円' : '',
+                $classification
+            ];
+
+            // 行の出力
+            $colIndex = 0;
+            foreach ($rowData as $data) {
+                $width = $colWidths[$colIndex];
+                $pdf->Cell($width, 6, $data, 1, 0, 'C', false);
+                $colIndex++;
+            }
+            $pdf->Ln();
+        }
+    }
+
+    /**
+     * 図書分類を取得する
+     */
+    private function getBookClassification($book)
+    {
+        $yomiInitial = '';
+        if ($book->title_transcription) {
+            $yomiInitial = mb_substr($book->title_transcription, 0, 1, 'UTF-8');
+        }
+        
+        $classification = '';
+        if ($book->ndc && $yomiInitial) {
+            $classification = $book->ndc . '-' . $yomiInitial;
+        } elseif ($book->ndc) {
+            $classification = $book->ndc;
+        } elseif ($yomiInitial) {
+            $classification = $yomiInitial;
+        }
+        
+        return $classification;
+    }
+
+    /**
+     * テキストをサニタイズする
+     */
+    private function sanitizeText($text)
+    {
+        if (!$text) return '';
+        
+        // UTF-8エンコーディングの確認と変換
+        if (!mb_check_encoding($text, 'UTF-8')) {
+            $text = mb_convert_encoding($text, 'UTF-8', 'auto');
+        }
+        
+        // 制御文字の除去
+        $text = preg_replace('/[\x00-\x1F\x7F]/', '', $text);
+        
+        // 長すぎるテキストの切り詰め
+        if (mb_strlen($text, 'UTF-8') > 50) {
+            $text = mb_substr($text, 0, 47, 'UTF-8') . '...';
+        }
+        
+        return $text;
     }
 }

@@ -97,6 +97,72 @@
             </dl>
           </div>
 
+          <!-- 貸出状態 -->
+          <div class="bg-white rounded-lg shadow p-6 mt-6">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4">貸出状態</h2>
+            <div class="mb-4">
+              <span
+                :class="{
+                  'px-3 py-1 rounded-full text-sm font-medium': true,
+                  'bg-red-100 text-red-800 border border-red-200': book.is_borrowed,
+                  'bg-green-100 text-green-800 border border-green-200': !book.is_borrowed
+                }"
+              >
+                {{ book.is_borrowed ? '貸出中' : '貸出可能' }}
+              </span>
+              <span 
+                v-if="book.is_borrowed && book.current_borrow?.student"
+                class="ml-2 text-sm text-gray-600"
+              >
+                {{ book.current_borrow.student.grade }}年
+                {{ book.current_borrow.student.class }}
+                {{ book.current_borrow.student.name }}が借りています
+              </span>
+            </div>
+          </div>
+
+          <!-- 貸出履歴 -->
+          <div class="bg-white rounded-lg shadow p-6 mt-6">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-lg font-semibold text-gray-900">貸出履歴</h2>
+              <button
+                v-if="!showAllHistory && book.borrow_history?.length > 0"
+                @click="loadFullHistory"
+                class="text-sm text-blue-600 hover:text-blue-800"
+              >
+                全ての履歴を表示
+              </button>
+            </div>
+
+            <div v-if="book.borrow_history?.length > 0" class="space-y-4">
+              <div 
+                v-for="history in book.borrow_history" 
+                :key="history.id"
+                class="bg-gray-50 p-4 rounded-lg"
+              >
+                <div class="flex items-center justify-between mb-2">
+                  <div class="flex items-center">
+                    <span class="font-medium text-gray-900">
+                      {{ history.student.grade }}年
+                      {{ history.student.class }}
+                      {{ history.student.name }}
+                    </span>
+                  </div>
+                  <span class="text-sm text-gray-500">
+                    {{ history.duration }}
+                  </span>
+                </div>
+                <div class="text-sm text-gray-600">
+                  {{ history.borrowed_date }} 〜 {{ history.returned_date || '貸出中' }}
+                </div>
+              </div>
+            </div>
+
+            <div v-else class="text-center py-4 text-gray-500">
+              貸出履歴はありません
+            </div>
+          </div>
+
           <!-- 受け入れ・廃棄情報 -->
           <div v-if="hasAcceptanceInfo" class="bg-white rounded-lg shadow p-6 mt-6">
             <h2 class="text-lg font-semibold text-gray-900 mb-4">受け入れ・廃棄情報</h2>
@@ -170,6 +236,21 @@ const router = useRouter();
 const book = ref(null);
 const loading = ref(true);
 const error = ref('');
+const showAllHistory = ref(false);
+
+// 全履歴を読み込む
+const loadFullHistory = async () => {
+  try {
+    loading.value = true;
+    const response = await axios.get(`/api/books/${route.params.id}/history`);
+    book.value.borrow_history = response.data.data;
+    showAllHistory.value = true;
+  } catch (err) {
+    error.value = '履歴の取得に失敗しました';
+  } finally {
+    loading.value = false;
+  }
+};
 
 // 受け入れ情報があるかどうか
 const hasAcceptanceInfo = computed(() => {
@@ -185,7 +266,9 @@ const loadBook = async () => {
   try {
     const response = await axios.get(`/api/books/${route.params.id}`);
     book.value = response.data.data || response.data;
+    console.log('Book data loaded:', book.value);
   } catch (err) {
+    console.error('Error loading book:', err);
     error.value = err.response?.data?.message || '書籍が見つかりませんでした';
   } finally {
     loading.value = false;

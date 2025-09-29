@@ -24,6 +24,9 @@
         v-model:form="form"
         :errors="errors"
         :loading="loading"
+        :isbn-searching="isbnSearching"
+        :isbn-search-message="isbnSearchMessage"
+        :isbn-search-success="isbnSearchSuccess"
         submit-label="書籍を登録"
         @submit="submitForm"
         @reset="resetForm"
@@ -51,7 +54,7 @@
 </template>
 
 <script setup>
-import { ref, reactive } from 'vue';
+import { ref, reactive, onMounted, nextTick } from 'vue';
 import { useRouter } from 'vue-router';
 import axios from 'axios';
 import BookForm from '@/components/books/BookForm.vue';
@@ -61,6 +64,11 @@ const router = useRouter();
 const loading = ref(false);
 const errors = ref({});
 const generalError = ref('');
+
+// ISBN検索状態
+const isbnSearching = ref(false);
+const isbnSearchMessage = ref('');
+const isbnSearchSuccess = ref(false);
 
 const form = reactive({
   title: '',
@@ -72,6 +80,7 @@ const form = reactive({
   pages: null,
   price: null,
   ndc: '',
+  quantity: 1,
   acceptance_date: '',
   acceptance_type: '',
   acceptance_source: '',
@@ -79,26 +88,52 @@ const form = reactive({
 });
 
 const fetchBookByIsbn = async (isbn) => {
-  if (!isbn || isbn.length < 10) return;
-  loading.value = true;
+  if (!isbn || isbn.length < 10) {
+    isbnSearchMessage.value = '';
+    isbnSearchSuccess.value = false;
+    return;
+  }
+
+  isbnSearching.value = true;
+  isbnSearchMessage.value = 'ISBN検索中...';
+  isbnSearchSuccess.value = false;
   generalError.value = '';
+
   try {
     const response = await axios.get(`/api/books/search-by-isbn`, { params: { isbn } });
     const data = response.data.data || response.data;
+    const source = response.data.source || 'unknown';
+    
     // 取得できたフィールドのみformに反映
+    let updatedFields = [];
     Object.keys(form).forEach(key => {
-      if (data[key] !== undefined && data[key] !== null) {
+      if (data[key] !== undefined && data[key] !== null && data[key] !== '') {
         form[key] = data[key];
+        updatedFields.push(key);
       }
     });
-  } catch (err) {
-    if (err.response?.status === 404) {
-      generalError.value = '書誌情報が見つかりませんでした。ISBNをご確認ください。';
+
+    if (updatedFields.length > 0) {
+      isbnSearchSuccess.value = true;
+      const sourceNames = {
+        openBD: 'openBD',
+        googleBooks: 'Google Books',
+        ndl: '国立国会図書館'
+      };
+      isbnSearchMessage.value = `${sourceNames[source] || source}から書籍情報を取得しました (${updatedFields.length}項目更新)`;
     } else {
-      generalError.value = '書誌情報の取得に失敗しました。ネットワークまたはAPIの状態をご確認ください。';
+      isbnSearchSuccess.value = false;
+      isbnSearchMessage.value = '書籍情報は見つかりましたが、利用可能なデータがありませんでした。';
+    }
+  } catch (err) {
+    isbnSearchSuccess.value = false;
+    if (err.response?.status === 404) {
+      isbnSearchMessage.value = 'ISBN ' + isbn + ' の書籍情報が見つかりませんでした。ISBNをご確認ください。';
+    } else {
+      isbnSearchMessage.value = '書籍情報の取得に失敗しました。ネットワークまたはAPIの状態をご確認ください。';
     }
   } finally {
-    loading.value = false;
+    isbnSearching.value = false;
   }
 };
 
@@ -106,12 +141,19 @@ const resetForm = () => {
   Object.keys(form).forEach(key => {
     if (key === 'pages' || key === 'price') {
       form[key] = null;
+    } else if (key === 'quantity') {
+      form[key] = 1; // 冊数のデフォルト値
     } else {
       form[key] = '';
     }
   });
   errors.value = {};
   generalError.value = '';
+  
+  // ISBN検索状態もリセット
+  isbnSearching.value = false;
+  isbnSearchMessage.value = '';
+  isbnSearchSuccess.value = false;
 };
 
 const submitForm = async () => {
@@ -140,6 +182,16 @@ const submitForm = async () => {
     loading.value = false;
   }
 };
+
+// ページマウント時にISBNフィールドにフォーカス
+onMounted(() => {
+  nextTick(() => {
+    const isbnInput = document.getElementById('isbn');
+    if (isbnInput) {
+      isbnInput.focus();
+    }
+  });
+});
 
 console.log('BookCreate.vue loaded successfully');
 </script>

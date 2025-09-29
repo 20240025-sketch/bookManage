@@ -11,11 +11,13 @@ class Borrow extends Model
         'book_id',
         'student_id',
         'borrowed_date',
+        'due_date',
         'returned_date',
     ];
 
     protected $casts = [
         'borrowed_date' => 'date',
+        'due_date' => 'date',
         'returned_date' => 'date',
     ];
 
@@ -33,5 +35,13 @@ class Borrow extends Model
     public function student(): BelongsTo
     {
         return $this->belongsTo(Student::class);
+    }
+
+    /**
+     * 返却期限日を取得（貸出日の2週間後）
+     */
+    public function getDueDateAttribute()
+    {
+        return $this->borrowed_date?->copy()->addWeeks(2);
     }
 }

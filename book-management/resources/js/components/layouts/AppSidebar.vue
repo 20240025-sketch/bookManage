@@ -3,9 +3,9 @@
     <nav class="p-6">
       <!-- メインナビゲーション -->
       <div class="space-y-8">
-        <!-- 書籍管理 -->
+        <!-- メインメニュー -->
         <div>
-          <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">書籍管理</h3>
+          <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">メインメニュー</h3>
           <ul class="space-y-2">
             <li>
               <router-link
@@ -28,31 +28,44 @@
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
                 </svg>
-                新規登録
+                書籍登録
               </router-link>
             </li>
-          </ul>
-        </div>
-
-        <!-- 統計・レポート -->
-        <div>
-          <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">統計・レポート</h3>
-          <ul class="space-y-2">
             <li>
-              <a href="#" class="nav-link">
+              <router-link
+                to="/students"
+                class="nav-link"
+                :class="{ 'nav-link-active': $route.path === '/students' }"
+              >
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
                 </svg>
-                統計ダッシュボード
-              </a>
+                生徒一覧
+              </router-link>
             </li>
             <li>
-              <a href="#" class="nav-link">
+              <router-link
+                to="/borrows/create"
+                class="nav-link"
+                :class="{ 'nav-link-active': $route.path === '/borrows/create' }"
+              >
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1"></path>
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
                 </svg>
-                読書進捗
-              </a>
+                貸出登録
+              </router-link>
+            </li>
+            <li>
+              <router-link
+                to="/book-requests"
+                class="nav-link"
+                :class="{ 'nav-link-active': $route.path === '/book-requests' }"
+              >
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                本のリクエスト
+              </router-link>
             </li>
           </ul>
         </div>

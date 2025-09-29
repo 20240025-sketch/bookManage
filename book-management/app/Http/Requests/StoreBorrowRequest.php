@@ -22,7 +22,19 @@ class StoreBorrowRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'book_id' => 'required|exists:books,id',
+            'book_id' => [
+                'required',
+                'exists:books,id',
+                function ($attribute, $value, $fail) {
+                    $isBookBorrowed = \App\Models\Borrow::where('book_id', $value)
+                        ->whereNull('returned_date')
+                        ->exists();
+                    
+                    if ($isBookBorrowed) {
+                        $fail('この本は現在貸出中です。');
+                    }
+                },
+            ],
             'student_id' => 'required|exists:students,id',
             'borrowed_date' => 'required|date',
             'returned_date' => 'nullable|date|after_or_equal:borrowed_date',

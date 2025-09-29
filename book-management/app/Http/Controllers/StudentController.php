@@ -17,9 +17,15 @@ class StudentController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = Student::query()
+            ->with('schoolClass') // classesテーブルとのリレーションを事前に読み込み
             ->withCount(['borrows as active_borrows_count' => function ($query) {
                 $query->whereNull('returned_date');
-            }]);
+            }])
+            ->withCount(['borrows as overdue_borrows_count' => function ($query) {
+                $query->whereNull('returned_date')
+                      ->where('due_date', '<', now()->startOfDay());
+            }])
+            ->withCount('borrows as total_borrows_count'); // 総貸出数を追加
 
         // 検索フィルター
         if ($request->filled('search')) {
@@ -30,21 +36,39 @@ class StudentController extends Controller
             });
         }
 
+        // 学年フィルター - classesテーブルを参照
         if ($request->filled('grade')) {
-            $query->where('grade', $request->grade);
+            $query->byGrade($request->grade);
         }
 
+        // 組フィルター - classesテーブルを参照
         if ($request->filled('class')) {
-            $query->where('class', $request->class);
+            $query->byClass($request->class);
         }
 
-        $students = $query->orderBy('grade')
-                         ->orderBy('class')
-                         ->orderBy('name')
+        // 出席番号での検索（完全一致）
+        if ($request->filled('student_number')) {
+            $query->where('student_number', $request->student_number);
+        }
+
+        // class_numberがnullの場合とそうでない場合を考慮したソート
+        $students = $query->leftJoin('classes', 'students.class_number', '=', 'classes.class_number')
+                         ->orderByRaw('classes.grade IS NULL, classes.grade')
+                         ->orderByRaw('classes.kumi IS NULL, classes.kumi')
+                         ->orderBy('students.name')
+                         ->select('students.*') // studentsテーブルのカラムのみ選択
                          ->get();
 
+        // アチーブメント情報を含むレスポンスデータを準備
+        $studentsWithAchievements = $students->map(function ($student) {
+            $studentArray = $student->toArray();
+            $studentArray['achievement'] = $student->achievement;
+            $studentArray['ndc_achievements'] = $student->ndc_achievements;
+            return $studentArray;
+        });
+
         return response()->json([
-            'data' => $students,
+            'data' => $studentsWithAchievements,
             'message' => 'Students retrieved successfully'
         ]);
     }
@@ -122,12 +146,22 @@ class StudentController extends Controller
             $query->with('book')->orderBy('borrowed_date', 'desc');
         }]);
 
-        $activeBorrows = $student->borrows->whereNull('returned_date')->values();
-        $borrowHistory = $student->borrows->whereNotNull('returned_date')->values();
+        $activeBorrows = $student->borrows->whereNull('returned_date')->values()->map(function ($borrow) {
+            $borrow->due_date = $borrow->due_date?->format('Y-m-d');
+            return $borrow;
+        });
+        $borrowHistory = $student->borrows->whereNotNull('returned_date')->values()->map(function ($borrow) {
+            $borrow->due_date = $borrow->due_date?->format('Y-m-d');
+            return $borrow;
+        });
+
+        // 総貸出冊数を計算
+        $totalBorrowsCount = $student->borrows->count();
 
         return response()->json([
             'active_borrows' => $activeBorrows,
-            'borrow_history' => $borrowHistory
+            'borrow_history' => $borrowHistory,
+            'total_borrows_count' => $totalBorrowsCount
         ]);
     }
 }

@@ -81,14 +81,27 @@
         <label for="isbn" class="block text-sm font-medium text-gray-700 mb-2">
           ISBN
         </label>
-        <input
-          id="isbn"
-          v-model="form.isbn"
-          type="text"
-          class="form-input"
-          placeholder="ISBN-13形式（978-）"
-          @blur="$emit('isbn-blur', form.isbn)"
-        >
+        <div class="relative">
+          <input
+            id="isbn"
+            v-model="form.isbn"
+            type="text"
+            class="form-input pr-10"
+            :class="{ 'border-blue-500': isbnSearching }"
+            placeholder="ISBN-13形式（978-）でISBN検索可能"
+            @blur="$emit('isbn-blur', form.isbn)"
+          >
+          <div v-if="isbnSearching" class="absolute inset-y-0 right-0 pr-3 flex items-center">
+            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          </div>
+        </div>
+        <p v-if="isbnSearchMessage" class="mt-1 text-sm" 
+           :class="isbnSearchSuccess ? 'text-green-600' : 'text-red-600'">
+          {{ isbnSearchMessage }}
+        </p>
       </div>
 
       <!-- ページ数 -->
@@ -135,6 +148,25 @@
           placeholder="例: 410"
         >
       </div>
+
+      <!-- 冊数 -->
+      <div>
+        <label for="quantity" class="block text-sm font-medium text-gray-700 mb-2">
+          冊数 <span class="text-red-500">*</span>
+        </label>
+        <input
+          id="quantity"
+          v-model.number="form.quantity"
+          type="number"
+          min="1"
+          required
+          class="form-input"
+          :class="{ 'border-red-500': errors.quantity }"
+          placeholder="蔵書冊数"
+        >
+        <p v-if="errors.quantity" class="mt-1 text-sm text-red-600">{{ errors.quantity[0] }}</p>
+        <p class="mt-1 text-sm text-gray-500">同じ本の所蔵冊数を入力してください</p>
+      </div>
     </div>
 
     <!-- 受け入れ・廃棄情報セクション -->
@@ -180,14 +212,32 @@
         <div>
           <label for="acceptance_source" class="block text-sm font-medium text-gray-700 mb-2">
             受け入れ元
+            <span class="text-sm font-normal text-gray-500">（選択または自由入力）</span>
           </label>
           <input
             id="acceptance_source"
             v-model="form.acceptance_source"
+            list="acceptance_source_options"
             type="text"
+            placeholder="選択または入力してください"
             class="form-input"
-            placeholder="例: 書店名、寄贈者名など"
-          >
+            @focus="loadAcceptanceSources"
+          />
+          <datalist id="acceptance_source_options">
+            <option 
+              v-for="source in acceptanceSources" 
+              :key="source" 
+              :value="source"
+            >
+              {{ source }}
+            </option>
+          </datalist>
+          <p class="mt-1 text-xs text-gray-500">
+            💡 入力欄をクリックして候補から選択するか、直接入力してください
+          </p>
+          <p v-if="sourcesLoading" class="mt-1 text-xs text-blue-600">
+            候補を読み込み中...
+          </p>
           <p v-if="errors.acceptance_source" class="mt-1 text-sm text-red-600">{{ errors.acceptance_source[0] }}</p>
         </div>
 
@@ -244,6 +294,9 @@
 </template>
 
 <script setup>
+import { ref, onMounted } from 'vue';
+import axios from 'axios';
+
 const props = defineProps({
   form: {
     type: Object,
@@ -260,8 +313,71 @@ const props = defineProps({
   submitLabel: {
     type: String,
     default: ''
+  },
+  isbnSearching: {
+    type: Boolean,
+    default: false
+  },
+  isbnSearchMessage: {
+    type: String,
+    default: ''
+  },
+  isbnSearchSuccess: {
+    type: Boolean,
+    default: false
   }
 });
 
 const emit = defineEmits(['submit', 'reset', 'isbn-blur']);
+
+// 受け入れ元候補の管理
+const acceptanceSources = ref([]);
+const sourcesLoading = ref(false);
+const sourcesLoaded = ref(false);
+
+// デフォルトの候補（APIが利用できない場合のフォールバック）
+const defaultAcceptanceSources = [
+  'Amazon',
+  'TSUTAYA', 
+  '楽天ブックス',
+  '紀伊國屋書店',
+  '丸善ジュンク堂書店',
+  '文英堂',
+  '寄贈',
+  '図書館間相互貸借',
+  '学校間交換',
+  '保護者寄付',
+  'その他'
+];
+
+// 受け入れ元候補を読み込み
+const loadAcceptanceSources = async () => {
+  if (sourcesLoaded.value || sourcesLoading.value) {
+    return; // 既に読み込み済みまたは読み込み中の場合はスキップ
+  }
+  
+  try {
+    sourcesLoading.value = true;
+    const response = await axios.get('/api/books/acceptance-sources');
+    
+    if (response.data && response.data.sources) {
+      acceptanceSources.value = response.data.sources;
+      console.log('受け入れ元候補を読み込みました:', response.data.sources.length + '件');
+    } else {
+      acceptanceSources.value = defaultAcceptanceSources;
+    }
+    
+    sourcesLoaded.value = true;
+  } catch (error) {
+    console.warn('受け入れ元候補の読み込みに失敗しました、デフォルト候補を使用します:', error);
+    acceptanceSources.value = defaultAcceptanceSources;
+  } finally {
+    sourcesLoading.value = false;
+  }
+};
+
+// 初回ロード時にデフォルト候補をセット
+onMounted(() => {
+  acceptanceSources.value = defaultAcceptanceSources;
+});
 </script>

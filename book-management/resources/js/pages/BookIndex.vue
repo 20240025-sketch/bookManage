@@ -41,16 +41,16 @@
             class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           >
             <option value="">すべて</option>
-            <option value="0">0 総記</option>
-            <option value="1">1 哲学</option>
-            <option value="2">2 歴史</option>
-            <option value="3">3 社会科学</option>
-            <option value="4">4 自然科学</option>
-            <option value="5">5 技術・工学</option>
-            <option value="6">6 産業</option>
-            <option value="7">7 芸術・美術</option>
-            <option value="8">8 言語</option>
-            <option value="9">9 文学</option>
+            <option value="000">000-099: 総記・情報学</option>
+            <option value="100">100-199: 哲学・心理学</option>
+            <option value="200">200-299: 歴史・地理</option>
+            <option value="300">300-399: 社会科学</option>
+            <option value="400">400-499: 自然科学・数学</option>
+            <option value="500">500-599: 技術・工学</option>
+            <option value="600">600-699: 産業・家政学</option>
+            <option value="700">700-799: 芸術・美術・音楽</option>
+            <option value="800">800-899: 語学</option>
+            <option value="900">900-999: 文学</option>
           </select>
         </div>
 
@@ -233,16 +233,81 @@
                 </div>
               </div>
 
-              <div class="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm text-gray-600">
-                <div>
-                  <span class="font-medium">著者:</span> {{ book.author || '不明' }}
+              <div class="space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm text-gray-600">
+                  <div>
+                    <span class="font-medium">著者:</span> {{ book.author || '不明' }}
+                  </div>
+                  <div v-if="book.publisher">
+                    <span class="font-medium">出版社:</span> {{ book.publisher }}
+                  </div>
+                  <div v-if="book.published_date">
+                    <span class="font-medium">出版日:</span> {{ formatDate(book.published_date) }}
+                  </div>
+                  <div>
+                    <span class="font-medium">冊数:</span>
+                    <span v-if="!editingQuantity[book.id]" class="inline-flex items-center gap-2">
+                      {{ book.quantity || 1 }}冊
+                      <button
+                        @click="startEditQuantity(book)"
+                        class="text-blue-500 hover:text-blue-700 text-xs"
+                        title="冊数を編集"
+                      >
+                        ✏️
+                      </button>
+                    </span>
+                    <div v-else class="inline-flex items-center gap-2">
+                      <input
+                        v-model.number="tempQuantity[book.id]"
+                        type="number"
+                        min="1"
+                        max="999"
+                        class="w-16 px-2 py-1 text-xs border border-gray-300 rounded"
+                        @keyup.enter="saveQuantity(book)"
+                        @keyup.escape="cancelEditQuantity(book.id)"
+                      >
+                      <span class="text-xs">冊</span>
+                      <button
+                        @click="saveQuantity(book)"
+                        class="text-green-600 hover:text-green-800 text-xs"
+                        title="保存"
+                      >
+                        ✓
+                      </button>
+                      <button
+                        @click="cancelEditQuantity(book.id)"
+                        class="text-red-600 hover:text-red-800 text-xs"
+                        title="キャンセル"
+                      >
+                        ✗
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <div v-if="book.publisher">
-                  <span class="font-medium">出版社:</span> {{ book.publisher }}
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm text-gray-600 mt-2">
+                  <div>
+                    <span class="font-medium">貸出状態:</span>
+                    <span
+                      :class="{
+                        'px-2 py-1 rounded-full text-sm ml-2 font-medium': true,
+                        'bg-red-100 text-red-800 border border-red-200': book.is_borrowed,
+                        'bg-green-100 text-green-800 border border-green-200': !book.is_borrowed
+                      }"
+                    >
+                      {{ book.is_borrowed ? '貸出中' : '貸出可能' }}
+                    </span>
+                    <span 
+                      v-if="book.is_borrowed && book.current_borrow?.student"
+                      class="ml-2 text-xs text-gray-500"
+                    >
+                      （{{ book.current_borrow.student.grade }}年
+                      {{ book.current_borrow.student.class }}
+                      {{ book.current_borrow.student.name }}が貸出中）
+                    </span>
+                  </div>
                 </div>
-                <div v-if="book.published_date">
-                  <span class="font-medium">出版日:</span> {{ formatDate(book.published_date) }}
-                </div>
+
+
               </div>
             </div>
 
@@ -258,6 +323,20 @@
                 class="bg-indigo-500 hover:bg-indigo-600 text-white px-3 py-1 rounded text-sm"
               >
                 編集
+              </router-link>
+              <div
+                v-if="book.is_borrowed"
+                class="px-3 py-1 rounded text-sm bg-gray-100 text-gray-500 cursor-not-allowed"
+                title="この本は現在貸出中です"
+              >
+                貸出不可
+              </div>
+              <router-link
+                v-else
+                :to="`/borrows/create?book=${book.id}`"
+                class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded text-sm"
+              >
+                貸出
               </router-link>
             </div>
           </div>
@@ -294,6 +373,10 @@ const loading = ref(true);
 const pdfExporting = ref(false);
 const error = ref('');
 
+// 冊数編集関連
+const editingQuantity = ref({});
+const tempQuantity = ref({});
+
 const filters = reactive({
   searchTitle: '',
   searchAuthor: '',
@@ -311,7 +394,7 @@ const loadBooks = async () => {
     const params = {};
     if (filters.startDate) params.start_date = filters.startDate;
     if (filters.endDate) params.end_date = filters.endDate;
-    if (filters.ndc) params.ndc = filters.ndc;
+    if (filters.ndc) params.ndc_category = filters.ndc;
     
     const response = await axios.get('/api/books', { params });
     books.value = response.data.data || response.data;
@@ -325,7 +408,7 @@ const loadBooks = async () => {
 const filteredBooks = computed(() => {
   let result = [...books.value];
 
-  // タイトル検索
+  // タイトル検索（クライアントサイドでの追加フィルタリング）
   if (filters.searchTitle) {
     const searchTerm = filters.searchTitle.toLowerCase();
     result = result.filter(book => 
@@ -334,11 +417,24 @@ const filteredBooks = computed(() => {
     );
   }
 
-  // 著者検索
+  // 著者検索（クライアントサイドでの追加フィルタリング）
   if (filters.searchAuthor) {
     const searchTerm = filters.searchAuthor.toLowerCase();
     result = result.filter(book => 
       book.author && book.author.toLowerCase().includes(searchTerm)
+    );
+  }
+
+  // 受け入れ日フィルター（サーバーサイドで既に処理されているが、念のためクライアントサイドでも確認）
+  if (filters.startDate) {
+    result = result.filter(book => 
+      book.acceptance_date && new Date(book.acceptance_date) >= new Date(filters.startDate)
+    );
+  }
+  
+  if (filters.endDate) {
+    result = result.filter(book => 
+      book.acceptance_date && new Date(book.acceptance_date) <= new Date(filters.endDate)
     );
   }
 
@@ -392,7 +488,7 @@ const exportPdf = async () => {
     
     // NDC分類フィルター
     if (filters.ndc) {
-      params.append('ndc', filters.ndc);
+      params.append('ndc_category', filters.ndc);
     }
 
     // 受入日範囲フィルター
@@ -431,6 +527,43 @@ const exportPdf = async () => {
     alert('PDF出力に失敗しました。もう一度お試しください。');
   } finally {
     pdfExporting.value = false;
+  }
+};
+
+// 冊数編集を開始
+const startEditQuantity = (book) => {
+  editingQuantity.value[book.id] = true;
+  tempQuantity.value[book.id] = book.quantity || 1;
+};
+
+// 冊数編集をキャンセル
+const cancelEditQuantity = (bookId) => {
+  editingQuantity.value[bookId] = false;
+  delete tempQuantity.value[bookId];
+};
+
+// 冊数を保存
+const saveQuantity = async (book) => {
+  const newQuantity = tempQuantity.value[book.id];
+  
+  if (!newQuantity || newQuantity < 1 || newQuantity > 999) {
+    alert('冊数は1から999の間で入力してください。');
+    return;
+  }
+
+  try {
+    await axios.put(`/api/books/${book.id}`, {
+      ...book,
+      quantity: newQuantity
+    });
+
+    // 成功したら表示を更新
+    book.quantity = newQuantity;
+    editingQuantity.value[book.id] = false;
+    delete tempQuantity.value[book.id];
+  } catch (err) {
+    alert('冊数の更新に失敗しました。もう一度お試しください。');
+    console.error(err);
   }
 };
 

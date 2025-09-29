@@ -7,6 +7,7 @@ const BookShow = () => import('../pages/BookShow.vue')
 const BookEdit = () => import('../pages/BookEdit.vue')
 const StudentIndex = () => import('../pages/StudentIndex.vue')
 const BorrowCreate = () => import('../pages/BorrowCreate.vue')
+const BookRequestsIndex = () => import('../pages/BookRequests/Index.vue')
 
 const routes = [
   {
@@ -50,6 +51,12 @@ const routes = [
     name: 'BorrowCreate',
     component: BorrowCreate,
     meta: { title: '貸出登録' }
+  },
+  {
+    path: '/book-requests',
+    name: 'BookRequestsIndex',
+    component: BookRequestsIndex,
+    meta: { title: '本のリクエスト' }
   }
 ]
 

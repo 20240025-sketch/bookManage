@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>生徒検索機能テスト</title>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; font-weight: bold; margin-bottom: 5px; }
+        input, select { width: 200px; padding: 8px; margin: 5px; border: 1px solid #ddd; }
+        button { padding: 10px 20px; margin: 5px; background: #007bff; color: white; border: none; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .results { margin-top: 20px; padding: 15px; border: 1px solid #ddd; }
+        .student { padding: 10px; border-bottom: 1px solid #eee; }
+        .student:last-child { border-bottom: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>生徒検索機能テスト</h1>
+        
+        <div class="form-group">
+            <label>学年:</label>
+            <select id="grade">
+                <option value="">すべて</option>
+                <option value="1">1年</option>
+                <option value="2">2年</option>
+                <option value="3">3年</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>クラス:</label>
+            <select id="class">
+                <option value="">すべて</option>
+                <option value="特別進学">特別進学</option>
+                <option value="進学">進学</option>
+                <option value="総合">総合</option>
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label>学籍番号:</label>
+            <input type="text" id="student_number" placeholder="20240008">
+        </div>
+        
+        <div class="form-group">
+            <label>名前:</label>
+            <input type="text" id="search" placeholder="西田">
+        </div>
+        
+        <button onclick="searchStudents()">検索</button>
+        <button onclick="clearFields()">クリア</button>
+        
+        <div id="results" class="results" style="display: none;"></div>
+    </div>
+
+    <script>
+        async function searchStudents() {
+            const params = new URLSearchParams();
+            
+            const grade = document.getElementById('grade').value;
+            const cls = document.getElementById('class').value;
+            const studentNumber = document.getElementById('student_number').value;
+            const search = document.getElementById('search').value;
+            
+            if (grade) params.append('grade', grade);
+            if (cls) params.append('class', cls);
+            if (studentNumber) params.append('student_number', studentNumber);
+            if (search) params.append('search', search);
+            
+            try {
+                const response = await axios.get(`http://localhost:8001/api/students?${params}`);
+                displayResults(response.data.data);
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('results').innerHTML = '<p style="color: red;">エラーが発生しました</p>';
+                document.getElementById('results').style.display = 'block';
+            }
+        }
+        
+        function displayResults(students) {
+            const resultsDiv = document.getElementById('results');
+            
+            if (students.length === 0) {
+                resultsDiv.innerHTML = '<p>検索結果が見つかりません</p>';
+            } else {
+                let html = `<h3>${students.length}件の生徒が見つかりました</h3>`;
+                students.forEach(student => {
+                    html += `
+                        <div class="student">
+                            <strong>${student.name}</strong> 
+                            (${student.grade}年${student.class}) 
+                            - 学籍番号: ${student.student_number}
+                            ${student.active_borrows_count > 0 ? ` - 貸出中: ${student.active_borrows_count}冊` : ''}
+                        </div>
+                    `;
+                });
+                resultsDiv.innerHTML = html;
+            }
+            
+            resultsDiv.style.display = 'block';
+        }
+        
+        function clearFields() {
+            document.getElementById('grade').value = '';
+            document.getElementById('class').value = '';
+            document.getElementById('student_number').value = '';
+            document.getElementById('search').value = '';
+            document.getElementById('results').style.display = 'none';
+        }
+        
+        // 初期表示でall生徒を表示
+        window.onload = () => {
+            searchStudents();
+        };
+    </script>
+</body>
+</html>

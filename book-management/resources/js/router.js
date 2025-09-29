@@ -4,10 +4,17 @@ import BookCreate from '@/components/BookCreate.vue';
 import BookEdit from '@/components/BookEdit.vue';
 import StudentIndex from '@/pages/StudentIndex.vue';
 import BorrowCreate from '@/pages/BorrowCreate.vue';
+import Home from '@/pages/Home.vue';
+import BookRequests from '@/pages/BookRequests/Index.vue';
 
 const routes = [
     {
         path: '/',
+        name: 'home',
+        component: Home
+    },
+    {
+        path: '/books',
         name: 'books.index',
         component: BookIndex
     },
@@ -30,6 +37,11 @@ const routes = [
         path: '/borrows/create',
         name: 'borrows.create',
         component: BorrowCreate
+    },
+    {
+        path: '/book-requests',
+        name: 'book-requests.index',
+        component: BookRequests
     }
 ];
 

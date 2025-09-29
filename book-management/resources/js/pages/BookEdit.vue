@@ -80,6 +80,7 @@ const form = reactive({
   pages: null,
   price: null,
   ndc: '',
+  quantity: 1,
   acceptance_date: '',
   acceptance_type: '',
   acceptance_source: '',
@@ -98,6 +99,9 @@ const loadBook = async () => {
       if (key === 'pages' || key === 'price') {
         // 数値フィールドは数値として設定、nullの場合はnullのまま
         form[key] = book[key] !== null && book[key] !== undefined ? Number(book[key]) : null;
+      } else if (key === 'quantity') {
+        // 冊数は数値として設定、nullや未定義の場合は1
+        form[key] = book[key] !== null && book[key] !== undefined ? Number(book[key]) : 1;
       } else if ((key === 'published_date' || key === 'acceptance_date') && book[key]) {
         // 日付フィールドはYYYY-MM-DD形式に変換
         const date = new Date(book[key]);
