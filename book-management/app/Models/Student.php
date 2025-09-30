@@ -118,6 +118,10 @@ class Student extends Model
      */
     public function getAchievementAttribute(): ?array
     {
+        // 一時的に無効化
+        return null;
+        
+        /* 
         $totalBorrows = $this->total_borrows_count;
         
         // 50の倍数でアチーブメントを計算
@@ -128,6 +132,7 @@ class Student extends Model
         }
         
         return $this->getAchievementData($achievementLevel, $totalBorrows);
+        */
     }
 
     /**
@@ -218,6 +223,10 @@ class Student extends Model
      */
     public function getNdcAchievementsAttribute(): array
     {
+        // 一時的に無効化
+        return [];
+        
+        /*
         $ndcBorrows = $this->ndc_borrows;
         $achievements = [];
         
@@ -244,5 +253,6 @@ class Student extends Model
         }
         
         return $achievements;
+        */
     }
 }

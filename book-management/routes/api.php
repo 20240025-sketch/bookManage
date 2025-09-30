@@ -7,6 +7,14 @@ use App\Http\Controllers\BorrowController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\Api\BookRequestController;
 
+// CORS対応のためのOPTIONSリクエスト処理
+Route::options('{any}', function () {
+    return response('', 200)
+        ->header('Access-Control-Allow-Origin', '*')
+        ->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+        ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+})->where('any', '.*');
+
 // 個別ルートを先に定義
 Route::post('books/search-isbn', [BookController::class, 'searchByISBN']);
 Route::get('books/search-by-isbn', [BookController::class, 'searchByISBN']);
@@ -26,6 +34,7 @@ Route::get('borrows/recent', [BorrowController::class, 'recent']);
 Route::get('books/available', [BookController::class, 'available']);
 
 // 生徒管理のルート
+Route::get('students/classes', [StudentController::class, 'classes']);
 Route::apiResource('students', StudentController::class);
 Route::get('students/{student}/borrows', [StudentController::class, 'getBorrows']);
 

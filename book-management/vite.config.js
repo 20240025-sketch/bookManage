@@ -22,4 +22,13 @@ export default defineConfig({
             '@': '/resources/js',
         },
     },
+    server: {
+        proxy: {
+            '/api': {
+                target: 'http://127.0.0.1:8084',
+                changeOrigin: true,
+                secure: false
+            }
+        }
+    }
 });

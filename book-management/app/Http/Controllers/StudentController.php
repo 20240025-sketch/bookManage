@@ -17,7 +17,6 @@ class StudentController extends Controller
     public function index(Request $request): JsonResponse
     {
         $query = Student::query()
-            ->with('schoolClass') // classesテーブルとのリレーションを事前に読み込み
             ->withCount(['borrows as active_borrows_count' => function ($query) {
                 $query->whereNull('returned_date');
             }])
@@ -31,8 +30,8 @@ class StudentController extends Controller
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('student_number', 'like', "%{$search}%");
+                $q->where('students.name', 'like', "%{$search}%")
+                  ->orWhere('students.student_number', 'like', "%{$search}%");
             });
         }
 
@@ -43,34 +42,51 @@ class StudentController extends Controller
 
         // 組フィルター - classesテーブルを参照
         if ($request->filled('class')) {
-            $query->byClass($request->class);
+            // クラス名（name）でフィルタリング
+            $query->whereHas('schoolClass', function ($q) use ($request) {
+                $q->where('classes.name', $request->class);
+            });
         }
 
         // 出席番号での検索（完全一致）
         if ($request->filled('student_number')) {
-            $query->where('student_number', $request->student_number);
+            $query->where('students.student_number', $request->student_number);
         }
 
-        // class_numberがnullの場合とそうでない場合を考慮したソート
-        $students = $query->leftJoin('classes', 'students.class_number', '=', 'classes.class_number')
-                         ->orderByRaw('classes.grade IS NULL, classes.grade')
-                         ->orderByRaw('classes.kumi IS NULL, classes.kumi')
-                         ->orderBy('students.name')
-                         ->select('students.*') // studentsテーブルのカラムのみ選択
-                         ->get();
+        // ページネーション設定
+        $perPage = $request->get('per_page', 20); // デフォルト20件
+        
+        // 学生番号の若い順にソート
+        $students = $query->orderBy('student_number')
+                         ->paginate($perPage);
 
-        // アチーブメント情報を含むレスポンスデータを準備
-        $studentsWithAchievements = $students->map(function ($student) {
+        // アチーブメント情報とクラス情報を含むレスポンスデータを準備
+        $studentsWithAchievements = $students->getCollection()->map(function ($student) {
+            $student->load('schoolClass'); // クラス情報を遅延読み込み
             $studentArray = $student->toArray();
-            $studentArray['achievement'] = $student->achievement;
-            $studentArray['ndc_achievements'] = $student->ndc_achievements;
+            // 一時的にアチーブメント情報を無効化
+            // $studentArray['achievement'] = $student->achievement;
+            // $studentArray['ndc_achievements'] = $student->ndc_achievements;
             return $studentArray;
         });
 
+        // ページネーション情報を含むレスポンス
         return response()->json([
             'data' => $studentsWithAchievements,
+            'pagination' => [
+                'current_page' => $students->currentPage(),
+                'last_page' => $students->lastPage(),
+                'per_page' => $students->perPage(),
+                'total' => $students->total(),
+                'from' => $students->firstItem(),
+                'to' => $students->lastItem(),
+                'prev_page_url' => $students->previousPageUrl(),
+                'next_page_url' => $students->nextPageUrl(),
+            ],
             'message' => 'Students retrieved successfully'
-        ]);
+        ])->header('Access-Control-Allow-Origin', '*')
+          ->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+          ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     }
 
     /**
@@ -162,6 +178,32 @@ class StudentController extends Controller
             'active_borrows' => $activeBorrows,
             'borrow_history' => $borrowHistory,
             'total_borrows_count' => $totalBorrowsCount
-        ]);
+        ])->header('Access-Control-Allow-Origin', '*')
+          ->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+          ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    }
+
+    /**
+     * Get available classes for filtering
+     */
+    public function classes(): JsonResponse
+    {
+        $classes = \App\Models\SchoolClass::select('grade', 'name')
+            ->distinct()
+            ->orderBy('grade')
+            ->orderBy('name')
+            ->get()
+            ->map(function ($class) {
+                return [
+                    'value' => "{$class->grade}-{$class->name}",
+                    'label' => "{$class->grade}年 {$class->name}"
+                ];
+            });
+
+        return response()->json([
+            'data' => $classes
+        ])->header('Access-Control-Allow-Origin', '*')
+          ->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+          ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
     }
 }

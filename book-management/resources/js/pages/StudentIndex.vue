@@ -138,45 +138,30 @@
           <input
             id="searchName"
             v-model="filters.name"
+            @input="applyFilters"
             type="text"
             placeholder="生徒名を入力"
             class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           />
         </div>
         <div>
-          <label for="searchGrade" class="block text-sm font-medium text-gray-700 mb-1">
-            学年
+          <label for="searchGradeClass" class="block text-sm font-medium text-gray-700 mb-1">
+            学年・クラス
           </label>
           <select
-            id="searchGrade"
-            v-model="filters.grade"
+            id="searchGradeClass"
+            v-model="filters.gradeClass"
+            @change="applyFilters"
             class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
           >
             <option value="">すべて</option>
-            <option value="1">1年</option>
-            <option value="2">2年</option>
-            <option value="3">3年</option>
+            <option v-for="gradeClass in availableGradeClasses" :key="gradeClass.value" :value="gradeClass.value">
+              {{ gradeClass.label }}
+            </option>
           </select>
         </div>
         <div>
-          <label for="searchClass" class="block text-sm font-medium text-gray-700 mb-1">
-            クラス
-          </label>
-          <select
-            id="searchClass"
-            v-model="filters.class"
-            class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-          >
-            <option value="">すべて</option>
-            <option value="特別進学">特別進学</option>
-            <option value="進学">進学</option>
-            <option value="調理">調理</option>
-            <option value="福祉">福祉</option>
-            <option value="情報会計">情報会計</option>
-            <option value="総合1">総合1</option>
-            <option value="総合2">総合2</option>
-            <option value="総合3">総合3</option>
-          </select>
+          <!-- 空のカラム（将来的な拡張用） -->
         </div>
       </div>
     </div>
@@ -207,38 +192,12 @@
           </tr>
         </thead>
         <tbody class="bg-white divide-y divide-gray-200">
-          <tr v-for="student in filteredStudents" :key="student.id">
+          <tr v-for="student in students" :key="student.id">
             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
               {{ student.student_number }}
             </td>
             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-              <div class="flex items-center gap-2 flex-wrap">
-                <span>{{ student.name }}</span>
-                
-                <!-- 総貸出数アチーブメントバッジ -->
-                <span 
-                  v-if="student.achievement" 
-                  :class="student.achievement.color"
-                  class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border"
-                  :title="`${student.achievement.description} (${student.total_borrows_count}冊)`"
-                >
-                  <span class="mr-1">{{ student.achievement.icon }}</span>
-                  {{ student.achievement.title }}
-                </span>
-
-                <!-- NDCアチーブメントバッジ -->
-                <span 
-                  v-for="ndcAchievement in student.ndc_achievements" 
-                  :key="ndcAchievement.ndc"
-                  :class="ndcAchievement.color"
-                  class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium border"
-                  :title="`${ndcAchievement.description} (${ndcAchievement.count}冊)`"
-                >
-                  <span class="mr-1">{{ ndcAchievement.icon }}</span>
-                  {{ ndcAchievement.title }}
-                </span>
-              </div>
-              
+              <div>{{ student.name }}</div>
               <span v-if="student.name_transcription" class="text-gray-500 text-xs block mt-1">
                 ({{ student.name_transcription }})
               </span>
@@ -288,6 +247,83 @@
           </tr>
         </tbody>
       </table>
+    </div>
+
+    <!-- ページネーション -->
+    <div class="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
+      <div class="flex-1 flex justify-between sm:hidden">
+        <button
+          @click="prevPage"
+          :disabled="pagination.current_page <= 1"
+          class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          前
+        </button>
+        <button
+          @click="nextPage"
+          :disabled="pagination.current_page >= pagination.last_page"
+          class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          次
+        </button>
+      </div>
+      <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+        <div>
+          <p class="text-sm text-gray-700">
+            <span class="font-medium">{{ pagination.from }}</span>
+            -
+            <span class="font-medium">{{ pagination.to }}</span>
+            件 / 全
+            <span class="font-medium">{{ pagination.total }}</span>
+            件
+          </p>
+        </div>
+        <div>
+          <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+            <button
+              @click="prevPage"
+              :disabled="pagination.current_page <= 1"
+              class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+              </svg>
+            </button>
+            
+            <!-- ページ番号ボタン -->
+            <template v-for="page in getVisiblePages()" :key="page">
+              <button
+                v-if="page !== '...'"
+                @click="changePage(page)"
+                :class="[
+                  'relative inline-flex items-center px-4 py-2 border text-sm font-medium',
+                  pagination.current_page === page
+                    ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'
+                    : 'bg-white border-gray-300 text-gray-500 hover:bg-gray-50'
+                ]"
+              >
+                {{ page }}
+              </button>
+              <span
+                v-else
+                class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700"
+              >
+                ...
+              </span>
+            </template>
+            
+            <button
+              @click="nextPage"
+              :disabled="pagination.current_page >= pagination.last_page"
+              class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+              </svg>
+            </button>
+          </nav>
+        </div>
+      </div>
     </div>
 
     <!-- 生徒登録/編集モーダル -->
@@ -407,12 +443,26 @@
       <div class="bg-white rounded-lg p-8 max-w-4xl w-full max-h-[80vh] overflow-y-auto">
         <div class="flex justify-between items-center mb-6">
           <div>
-            <div class="flex items-center gap-3">
-              <h2 class="text-xl font-bold">
-                {{ selectedStudent?.name }}さんの貸出履歴
-              </h2>
-              <!-- アチーブメント表示（改善版） -->
-              <div v-if="shouldShowAchievement || shouldShowNDCAchievement" class="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-200 mb-4">
+            <h2 class="text-xl font-bold">
+              {{ selectedStudent?.name }}さんの貸出履歴
+            </h2>
+            <p class="text-sm text-gray-600 mt-1">
+              総貸出冊数: {{ selectedStudent?.total_borrows_count || 0 }}冊
+            </p>
+          </div>
+          <button
+            @click="showBorrowModal = false"
+            class="text-gray-400 hover:text-gray-500"
+          >
+            <span class="sr-only">閉じる</span>
+            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        <!-- アチーブメント表示（貸出履歴の上に独立表示） -->
+        <div v-if="shouldShowAchievement || shouldShowNDCAchievement" class="bg-gradient-to-r from-purple-50 to-pink-50 rounded-lg p-4 border border-purple-200 mb-6">
                 <h3 class="text-lg font-semibold text-purple-800 mb-3 flex items-center gap-2">
                   🏆 アチーブメント
                 </h3>
@@ -559,24 +609,66 @@
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
-            <p class="text-sm text-gray-600 mt-1">
-              総貸出冊数: {{ selectedStudent?.total_borrows_count || 0 }}冊
-            </p>
-          </div>
-          <button
-            @click="showBorrowModal = false"
-            class="text-gray-400 hover:text-gray-500"
-          >
-            <span class="sr-only">閉じる</span>
-            <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
         </div>
 
         <div class="space-y-6">
+          <!-- 貸出履歴（改善版） -->
+          <div class="bg-gradient-to-r from-gray-50 to-slate-50 rounded-lg p-4 border border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              📚 貸出履歴 
+              <span class="bg-gray-600 text-white text-sm px-2 py-1 rounded-full">{{ selectedStudent?.borrow_history?.length || 0 }}冊</span>
+            </h3>
+            
+            <div class="space-y-3 max-h-96 overflow-y-auto">
+              <div v-for="borrow in selectedStudent?.borrow_history" :key="borrow.id" 
+                  class="bg-white rounded-lg p-3 border shadow-sm hover:shadow-md transition-shadow">
+                <div class="flex justify-between items-start">
+                  <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-2">
+                      <h4 class="font-medium text-gray-900">{{ borrow.book.title }}</h4>
+                      <span class="px-2 py-1 text-xs rounded-full"
+                            :class="[
+                              borrow.returned_date
+                                ? 'bg-green-100 text-green-800'
+                                : isOverdue(borrow.due_date)
+                                  ? 'bg-red-100 text-red-800'
+                                  : getDaysUntilDue(borrow.due_date) <= 3 && getDaysUntilDue(borrow.due_date) >= 0
+                                    ? 'bg-yellow-100 text-yellow-800'
+                                    : 'bg-blue-100 text-blue-800'
+                            ]">
+                        {{ borrow.returned_date ? '✅ 返却済み' : 
+                           isOverdue(borrow.due_date) ? '⚠️ 期限切れ' :
+                           getDaysUntilDue(borrow.due_date) <= 3 && getDaysUntilDue(borrow.due_date) >= 0 ? '⏰ 要注意' : 
+                           '📖 貸出中' }}
+                      </span>
+                    </div>
+                    
+                    <p class="text-sm text-gray-600 mb-2">{{ borrow.book.author }}</p>
+                    
+                    <div class="grid grid-cols-2 gap-2 text-xs text-gray-500">
+                      <div>📅 貸出: {{ formatDate(borrow.borrowed_date) }}</div>
+                      <div>⏰ 期限: {{ formatDate(borrow.due_date) }}</div>
+                      <div v-if="borrow.returned_date" class="text-green-600">✅ 返却: {{ formatDate(borrow.returned_date) }}</div>
+                      <div v-else-if="!borrow.returned_date && isOverdue(borrow.due_date)" class="text-red-600">
+                        ⚠️ {{ Math.abs(getDaysUntilDue(borrow.due_date)) }}日超過
+                      </div>
+                      <div v-else-if="!borrow.returned_date && getDaysUntilDue(borrow.due_date) <= 3 && getDaysUntilDue(borrow.due_date) >= 0" class="text-yellow-600">
+                        ⏰ あと{{ getDaysUntilDue(borrow.due_date) }}日
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- 貸出履歴が空の場合のメッセージ -->
+            <div v-if="!selectedStudent?.borrow_history || selectedStudent.borrow_history.length === 0" 
+                 class="text-center py-8 text-gray-500">
+              <div class="text-4xl mb-2">📚</div>
+              <p>まだ貸出履歴がありません</p>
+            </div>
+          </div>
+
           <!-- 現在借りている本（改善版） -->
           <div v-if="selectedStudent?.active_borrows?.length > 0" class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
             <div class="flex items-center justify-between mb-4">
@@ -679,56 +771,6 @@
               </div>
             </div>
           </div>
-
-          <!-- 貸出履歴（改善版） -->
-          <div class="bg-gradient-to-r from-gray-50 to-slate-50 rounded-lg p-4 border border-gray-200">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              📚 貸出履歴 
-              <span class="bg-gray-600 text-white text-sm px-2 py-1 rounded-full">{{ selectedStudent?.borrow_history?.length || 0 }}冊</span>
-            </h3>
-            
-            <div class="space-y-3 max-h-96 overflow-y-auto">
-              <div v-for="borrow in selectedStudent?.borrow_history" :key="borrow.id" 
-                  class="bg-white rounded-lg p-3 border shadow-sm hover:shadow-md transition-shadow">
-                <div class="flex justify-between items-start">
-                  <div class="flex-1">
-                    <div class="flex items-center gap-2 mb-2">
-                      <h4 class="font-medium text-gray-900">{{ borrow.book.title }}</h4>
-                      <span class="px-2 py-1 text-xs rounded-full"
-                            :class="[
-                              borrow.returned_date
-                                ? 'bg-green-100 text-green-800'
-                                : isOverdue(borrow.due_date)
-                                  ? 'bg-red-100 text-red-800'
-                                  : getDaysUntilDue(borrow.due_date) <= 3 && getDaysUntilDue(borrow.due_date) >= 0
-                                    ? 'bg-yellow-100 text-yellow-800'
-                                    : 'bg-blue-100 text-blue-800'
-                            ]">
-                        {{ borrow.returned_date ? '✅ 返却済み' : 
-                           isOverdue(borrow.due_date) ? '⚠️ 期限切れ' :
-                           getDaysUntilDue(borrow.due_date) <= 3 && getDaysUntilDue(borrow.due_date) >= 0 ? '⏰ 要注意' : 
-                           '📖 貸出中' }}
-                      </span>
-                    </div>
-                    
-                    <p class="text-sm text-gray-600 mb-2">{{ borrow.book.author }}</p>
-                    
-                    <div class="grid grid-cols-2 gap-2 text-xs text-gray-500">
-                      <div>📅 貸出: {{ formatDate(borrow.borrowed_date) }}</div>
-                      <div>⏰ 期限: {{ formatDate(borrow.due_date) }}</div>
-                      <div v-if="borrow.returned_date" class="text-green-600">✅ 返却: {{ formatDate(borrow.returned_date) }}</div>
-                      <div v-else-if="!borrow.returned_date && isOverdue(borrow.due_date)" class="text-red-600">
-                        ⚠️ {{ Math.abs(getDaysUntilDue(borrow.due_date)) }}日超過
-                      </div>
-                      <div v-else-if="!borrow.returned_date && getDaysUntilDue(borrow.due_date) <= 3 && getDaysUntilDue(borrow.due_date) >= 0" class="text-yellow-600">
-                        ⏰ あと{{ getDaysUntilDue(borrow.due_date) }}日
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>
@@ -739,9 +781,21 @@
 import { ref, computed, onMounted } from 'vue';
 import axios from 'axios';
 
+// プロキシ経由でAPIにアクセス（ベースURLは不要）
+axios.defaults.headers.common['Accept'] = 'application/json';
+axios.defaults.headers.common['Content-Type'] = 'application/json';
+
 const students = ref([]);
 const loading = ref(true);
 const error = ref('');
+const pagination = ref({
+  current_page: 1,
+  last_page: 1,
+  per_page: 20,
+  total: 0,
+  from: 0,
+  to: 0
+});
 
 const showCreateModal = ref(false);
 const showEditModal = ref(false);
@@ -752,9 +806,10 @@ const processingReturn = ref(false);
 
 const filters = ref({
   name: '',
-  grade: '',
-  class: ''
+  gradeClass: ''
 });
+
+const availableGradeClasses = ref([]);
 
 const form = ref({
   student_number: '',
@@ -765,21 +820,10 @@ const form = ref({
   class: '特別進学'
 });
 
-// フィルター適用後の生徒リスト
-const filteredStudents = computed(() => {
-  return students.value.filter(student => {
-    if (filters.value.name && !student.name.includes(filters.value.name)) {
-      return false;
-    }
-    if (filters.value.grade && student.grade !== filters.value.grade) {
-      return false;
-    }
-    if (filters.value.class && student.class !== filters.value.class) {
-      return false;
-    }
-    return true;
-  });
-});
+// フィルター変更時に生徒リストを再読み込み
+const applyFilters = () => {
+  loadStudents(1); // 1ページ目から開始
+};
 
 // アチーブメント表示判定（10冊以上読んだ生徒は表示）
 const shouldShowAchievement = computed(() => {
@@ -940,7 +984,7 @@ const ndcCategories = {
 
 // NDCジャンル達成度を計算
 const getNDCAchievements = computed(() => {
-  if (!selectedStudent.value?.borrow_history) {
+  if (!selectedStudent.value?.ndc_achievements) {
     return {
       completedCategories: [],
       completedCount: 0,
@@ -949,42 +993,125 @@ const getNDCAchievements = computed(() => {
     };
   }
 
-  const borrowedCategories = new Set();
-  
-  selectedStudent.value.borrow_history.forEach(borrow => {
-    if (borrow.book && borrow.book.ndc) {
-      const category = borrow.book.ndc.charAt(0);
-      borrowedCategories.add(category);
-    }
-  });
-
-  const completedCategories = Array.from(borrowedCategories).sort();
+  // バックエンドから送信されたndc_achievementsデータを使用
+  const ndcAchievements = selectedStudent.value.ndc_achievements;
+  const completedCategories = ndcAchievements.map(achievement => achievement.ndc.charAt(0));
   
   return {
     completedCategories,
-    completedCount: completedCategories.length,
+    completedCount: ndcAchievements.length,
     totalCategories: 10,
-    completionRate: Math.round((completedCategories.length / 10) * 100)
+    completionRate: Math.round((ndcAchievements.length / 10) * 100)
   };
 });
 
 // NDC達成アチーブメントの表示判定
 const shouldShowNDCAchievement = computed(() => {
-  return getNDCAchievements.value.completedCount >= 2; // 2ジャンル以上で表示
+  return selectedStudent.value?.ndc_achievements?.length >= 1; // 1ジャンル以上で表示
 });
 
 // 生徒一覧の取得
-const loadStudents = async () => {
+const loadStudents = async (page = 1) => {
   try {
     loading.value = true;
-    const response = await axios.get('/api/students');
+    console.log('Loading students from API...');
+    
+    const params = {
+      page: page,
+      per_page: pagination.value.per_page
+    };
+    
+    // フィルター条件を追加
+    if (filters.value.name) {
+      params.search = filters.value.name;
+    }
+    
+    if (filters.value.gradeClass) {
+      const [grade, className] = filters.value.gradeClass.split('-');
+      params.grade = grade;
+      params.class = className;
+    }
+    
+    const response = await axios.get('/api/students', { params });
+    console.log('API Response:', response.data);
     students.value = response.data.data;
+    pagination.value = response.data.pagination;
+    console.log('Students loaded:', students.value.length);
   } catch (err) {
     error.value = '生徒情報の取得に失敗しました';
-    console.error(err);
+    console.error('Error loading students:', err);
   } finally {
     loading.value = false;
   }
+};
+
+// クラス一覧の取得
+const loadGradeClasses = async () => {
+  try {
+    console.log('Loading grade classes from API...');
+    const response = await axios.get('/api/students/classes');
+    console.log('Grade Classes API Response:', response.data);
+    availableGradeClasses.value = response.data.data;
+    console.log('Grade classes loaded:', availableGradeClasses.value.length);
+  } catch (err) {
+    console.error('Error loading grade classes:', err);
+  }
+};
+
+// ページネーション関数
+const changePage = (page) => {
+  if (page >= 1 && page <= pagination.value.last_page) {
+    loadStudents(page);
+  }
+};
+
+const nextPage = () => {
+  if (pagination.value.current_page < pagination.value.last_page) {
+    changePage(pagination.value.current_page + 1);
+  }
+};
+
+const prevPage = () => {
+  if (pagination.value.current_page > 1) {
+    changePage(pagination.value.current_page - 1);
+  }
+};
+
+// 表示するページ番号を計算
+const getVisiblePages = () => {
+  const current = pagination.value.current_page;
+  const last = pagination.value.last_page;
+  const delta = 2; // 現在ページの前後に表示するページ数
+  
+  if (last <= 7) {
+    // ページ数が少ない場合は全て表示
+    return Array.from({ length: last }, (_, i) => i + 1);
+  }
+  
+  const pages = [];
+  
+  // 最初のページ
+  if (current - delta > 1) {
+    pages.push(1);
+    if (current - delta > 2) {
+      pages.push('...');
+    }
+  }
+  
+  // 現在ページ周辺
+  for (let i = Math.max(1, current - delta); i <= Math.min(last, current + delta); i++) {
+    pages.push(i);
+  }
+  
+  // 最後のページ
+  if (current + delta < last) {
+    if (current + delta < last - 1) {
+      pages.push('...');
+    }
+    pages.push(last);
+  }
+  
+  return pages;
 };
 
 // 生徒の登録
@@ -1025,6 +1152,12 @@ const editStudent = (student) => {
 const showBorrowHistory = async (student) => {
   try {
     const response = await axios.get(`/api/students/${student.id}/borrows`);
+    
+    // デバッグ：学生データとNDCアチーブメントの確認
+    console.log('Selected Student:', student);
+    console.log('NDC Achievements:', student.ndc_achievements);
+    console.log('Should Show NDC Achievement:', student.ndc_achievements?.length >= 1);
+    
     selectedStudent.value = {
       ...student,
       active_borrows: response.data.active_borrows,
@@ -1144,6 +1277,7 @@ const getDaysUntilDue = (dueDate) => {
 // コンポーネントのマウント時に生徒一覧を取得
 onMounted(() => {
   loadStudents();
+  loadGradeClasses();
 });
 </script>
 

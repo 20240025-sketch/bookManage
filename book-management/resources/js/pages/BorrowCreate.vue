@@ -178,72 +178,51 @@
         <h2 class="text-lg font-medium mb-4">生徒の選択</h2>
         <div class="space-y-4">
           <!-- 検索条件 -->
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label for="gradeSelect" class="block text-sm font-medium text-gray-700 mb-1">
-                学年
-              </label>
-              <select
-                id="gradeSelect"
-                v-model="studentSearchFilters.grade"
-                @change="searchStudents"
-                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              >
-                <option value="">すべて</option>
-                <option value="1">1年</option>
-                <option value="2">2年</option>
-                <option value="3">3年</option>
-              </select>
-            </div>
-            <div>
-              <label for="classSelect" class="block text-sm font-medium text-gray-700 mb-1">
-                クラス
-              </label>
-              <select
-                id="classSelect"
-                v-model="studentSearchFilters.class"
-                @change="searchStudents"
-                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              >
-                <option value="">すべて</option>
-                <option value="特別進学">特別進学</option>
-                <option value="進学">進学</option>
-                <option value="調理">調理</option>
-                <option value="福祉">福祉</option>
-                <option value="情報会計">情報会計</option>
-                <option value="総合1">総合1</option>
-                <option value="総合2">総合2</option>
-                <option value="総合3">総合3</option>
-              </select>
-            </div>
-            <div>
-              <label for="studentNumber" class="block text-sm font-medium text-gray-700 mb-1">
-                出席番号
+              <label for="studentSearch" class="block text-sm font-medium text-gray-700 mb-1">
+                名前で検索
               </label>
               <input
-                type="number"
-                id="studentNumber"
-                v-model="studentSearchFilters.student_number"
+                type="text"
+                id="studentSearch"
+                v-model="studentSearch"
                 @input="searchStudents"
                 class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                placeholder="番号"
-                min="1"
-                max="50"
+                placeholder="生徒の名前を入力..."
               />
+            </div>
+            <div>
+              <label for="gradeClassSelect" class="block text-sm font-medium text-gray-700 mb-1">
+                学年・クラス
+              </label>
+              <select
+                id="gradeClassSelect"
+                v-model="studentSearchFilters.gradeClass"
+                @change="searchStudents"
+                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              >
+                <option value="">すべて</option>
+                <option v-for="gradeClass in availableGradeClasses" :key="gradeClass.value" :value="gradeClass.value">
+                  {{ gradeClass.label }}
+                </option>
+              </select>
             </div>
           </div>
           
           <div>
-            <label for="studentSearch" class="block text-sm font-medium text-gray-700 mb-1">
-              名前で検索
+            <label for="studentNumber" class="block text-sm font-medium text-gray-700 mb-1">
+              出席番号
             </label>
             <input
-              type="text"
-              id="studentSearch"
-              v-model="studentSearch"
+              type="number"
+              id="studentNumber"
+              v-model="studentSearchFilters.student_number"
               @input="searchStudents"
               class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-              placeholder="生徒の名前を入力..."
+              placeholder="番号"
+              min="1"
+              max="50"
             />
           </div>
           
@@ -287,7 +266,7 @@
           </div>
         </div>
         
-        <div v-else-if="(studentSearch || studentSearchFilters.grade || studentSearchFilters.class || studentSearchFilters.student_number) && studentResults.length === 0" class="mt-4 text-center py-8">
+        <div v-else-if="(studentSearch || studentSearchFilters.student_number || studentSearchFilters.gradeClass) && studentResults.length === 0" class="mt-4 text-center py-8">
           <div class="text-gray-500">
             <svg class="mx-auto h-12 w-12 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -413,10 +392,10 @@ const isbnSearch = ref('');
 const isbnSearching = ref(false);
 const studentSearch = ref('');
 const studentSearchFilters = ref({
-  grade: '',
-  class: '',
-  student_number: ''
+  student_number: '',
+  gradeClass: ''
 });
+const availableGradeClasses = ref([]);
 const ndcCategory = ref('');
 const searchResults = ref([]);
 const studentResults = ref([]);
@@ -528,19 +507,30 @@ const onIsbnFocus = () => {
 // 生徒検索をクリア
 const clearStudentSearch = () => {
   studentSearch.value = '';
-  studentSearchFilters.value.grade = '';
-  studentSearchFilters.value.class = '';
   studentSearchFilters.value.student_number = '';
+  studentSearchFilters.value.gradeClass = '';
   studentResults.value = [];
+};
+
+// クラス一覧の取得
+const loadGradeClasses = async () => {
+  try {
+    console.log('Loading grade classes from API...');
+    const response = await axios.get('/api/students/classes');
+    console.log('Grade Classes API Response:', response.data);
+    availableGradeClasses.value = response.data.data;
+    console.log('Grade classes loaded:', availableGradeClasses.value.length);
+  } catch (err) {
+    console.error('Error loading grade classes:', err);
+  }
 };
 
 // 生徒を検索
 const searchStudents = async () => {
   // 検索条件が何も入力されていない場合は結果をクリア
   if (!studentSearch.value && 
-      !studentSearchFilters.value.grade && 
-      !studentSearchFilters.value.class && 
-      !studentSearchFilters.value.student_number) {
+      !studentSearchFilters.value.student_number &&
+      !studentSearchFilters.value.gradeClass) {
     studentResults.value = [];
     return;
   }
@@ -553,14 +543,11 @@ const searchStudents = async () => {
       params.search = studentSearch.value;
     }
     
-    // 学年フィルター
-    if (studentSearchFilters.value.grade) {
-      params.grade = studentSearchFilters.value.grade;
-    }
-    
-    // クラスフィルター
-    if (studentSearchFilters.value.class) {
-      params.class = studentSearchFilters.value.class;
+    // 学年・クラスでの検索
+    if (studentSearchFilters.value.gradeClass) {
+      const [grade, className] = studentSearchFilters.value.gradeClass.split('-');
+      params.grade = grade;
+      params.class = className;
     }
     
     // 出席番号フィルター（学籍番号での検索として処理）
@@ -680,9 +667,8 @@ const resetForm = () => {
   isbnSearch.value = '';
   studentSearch.value = '';
   ndcCategory.value = '';
-  studentSearchFilters.value.grade = '';
-  studentSearchFilters.value.class = '';
   studentSearchFilters.value.student_number = '';
+  studentSearchFilters.value.gradeClass = '';
   searchResults.value = [];
   studentResults.value = [];
   selectedBooks.value = [];
@@ -694,6 +680,7 @@ const resetForm = () => {
 
 // ページマウント時にISBN検索フィールドにフォーカス
 onMounted(() => {
+  loadGradeClasses(); // 学年・クラス一覧を読み込み
   nextTick(() => {
     const isbnInput = document.getElementById('isbnSearch');
     if (isbnInput) {
