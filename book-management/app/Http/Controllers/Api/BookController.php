@@ -134,17 +134,23 @@ class BookController extends Controller
     }
 
     /**
-     * 本の貸出履歴を全て取得
+     * 本の貸出履歴を取得（ページネーション対応）
      */
-    public function history(Book $book)
+    public function history(Request $request, Book $book)
     {
         try {
-            $book->load(['borrows' => function($query) {
-                $query->with('student')
-                      ->orderBy('borrowed_date', 'desc');
-            }]);
+            // ページネーション設定
+            $perPage = $request->get('per_page', 10); // デフォルト10件
+            
+            // 貸出履歴を取得（returned_dateでソート、新しい順）
+            $borrowHistory = $book->borrows()
+                ->with('student')
+                ->whereNotNull('returned_date')
+                ->orderBy('returned_date', 'desc')
+                ->paginate($perPage);
 
-            $borrows = $book->borrows->map(function ($borrow) {
+            // レスポンス用にデータを整形
+            $formattedHistory = $borrowHistory->getCollection()->map(function ($borrow) {
                 return [
                     'id' => $borrow->id,
                     'borrowed_date' => $borrow->borrowed_date->format('Y-m-d'),
@@ -162,7 +168,17 @@ class BookController extends Controller
             });
 
             return response()->json([
-                'data' => $borrows,
+                'data' => $formattedHistory,
+                'pagination' => [
+                    'current_page' => $borrowHistory->currentPage(),
+                    'last_page' => $borrowHistory->lastPage(),
+                    'per_page' => $borrowHistory->perPage(),
+                    'total' => $borrowHistory->total(),
+                    'from' => $borrowHistory->firstItem(),
+                    'to' => $borrowHistory->lastItem(),
+                    'prev_page_url' => $borrowHistory->previousPageUrl(),
+                    'next_page_url' => $borrowHistory->nextPageUrl(),
+                ],
                 'success' => true
             ]);
 

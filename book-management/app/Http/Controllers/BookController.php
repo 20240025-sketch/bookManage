@@ -9,6 +9,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Log;
+use Carbon\Carbon;
 use Exception;
 
 class BookController extends Controller
@@ -622,5 +623,82 @@ class BookController extends Controller
         }
         
         return $text;
+    }
+
+    /**
+     * Get paginated borrow history for a specific book
+     */
+    public function history(Request $request, Book $book): JsonResponse
+    {
+        try {
+            // ページネーション設定
+            $perPage = $request->get('per_page', 10); // デフォルト10件
+            
+            // 貸出履歴を取得（returned_dateでソート、新しい順）
+            $borrowHistory = $book->borrows()
+                ->with(['student.schoolClass'])
+                ->whereNotNull('returned_date')
+                ->orderBy('returned_date', 'desc')
+                ->paginate($perPage);
+
+            // レスポンス用にデータを整形
+            $formattedHistory = $borrowHistory->getCollection()->map(function ($borrow) {
+                // 安全に日付を処理
+                $borrowedDate = $borrow->borrowed_date ? Carbon::parse($borrow->borrowed_date) : null;
+                $returnedDate = $borrow->returned_date ? Carbon::parse($borrow->returned_date) : null;
+                $dueDate = $borrow->due_date ? Carbon::parse($borrow->due_date) : null;
+                
+                $duration = ($borrowedDate && $returnedDate) ? $borrowedDate->diffInDays($returnedDate) + 1 : 0;
+
+                // 学生の学年・クラス情報を安全に取得
+                $student = $borrow->student;
+                $schoolClass = $student ? $student->schoolClass : null;
+
+                return [
+                    'id' => $borrow->id,
+                    'student' => [
+                        'id' => $student ? $student->id : null,
+                        'name' => $student ? $student->name : '不明',
+                        'grade' => $schoolClass ? $schoolClass->grade : ($student ? $student->grade : '不明'),
+                        'class' => $schoolClass ? $schoolClass->name : ($student ? $student->class : '不明'),
+                        'student_number' => $student ? $student->student_number : null,
+                    ],
+                    'borrowed_date' => $borrowedDate ? $borrowedDate->format('Y年m月d日') : '不明',
+                    'returned_date' => $returnedDate ? $returnedDate->format('Y年m月d日') : '不明',
+                    'due_date' => $dueDate ? $dueDate->format('Y年m月d日') : '不明',
+                    'duration' => $duration . '日間',
+                    'is_overdue' => ($returnedDate && $dueDate) ? $returnedDate->gt($dueDate) : false,
+                ];
+            });
+
+            return response()->json([
+                'data' => $formattedHistory,
+                'pagination' => [
+                    'current_page' => $borrowHistory->currentPage(),
+                    'last_page' => $borrowHistory->lastPage(),
+                    'per_page' => $borrowHistory->perPage(),
+                    'total' => $borrowHistory->total(),
+                    'from' => $borrowHistory->firstItem(),
+                    'to' => $borrowHistory->lastItem(),
+                    'prev_page_url' => $borrowHistory->previousPageUrl(),
+                    'next_page_url' => $borrowHistory->nextPageUrl(),
+                ],
+                'message' => 'Book borrow history retrieved successfully'
+            ])->header('Access-Control-Allow-Origin', '*')
+              ->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+              ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+        } catch (Exception $e) {
+            Log::error('Book history retrieval failed', [
+                'book_id' => $book->id,
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString()
+            ]);
+
+            return response()->json([
+                'message' => 'Book borrow history retrieval failed',
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 }

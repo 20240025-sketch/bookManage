@@ -612,63 +612,6 @@
         </div>
 
         <div class="space-y-6">
-          <!-- 貸出履歴（改善版） -->
-          <div class="bg-gradient-to-r from-gray-50 to-slate-50 rounded-lg p-4 border border-gray-200">
-            <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-              📚 貸出履歴 
-              <span class="bg-gray-600 text-white text-sm px-2 py-1 rounded-full">{{ selectedStudent?.borrow_history?.length || 0 }}冊</span>
-            </h3>
-            
-            <div class="space-y-3 max-h-96 overflow-y-auto">
-              <div v-for="borrow in selectedStudent?.borrow_history" :key="borrow.id" 
-                  class="bg-white rounded-lg p-3 border shadow-sm hover:shadow-md transition-shadow">
-                <div class="flex justify-between items-start">
-                  <div class="flex-1">
-                    <div class="flex items-center gap-2 mb-2">
-                      <h4 class="font-medium text-gray-900">{{ borrow.book.title }}</h4>
-                      <span class="px-2 py-1 text-xs rounded-full"
-                            :class="[
-                              borrow.returned_date
-                                ? 'bg-green-100 text-green-800'
-                                : isOverdue(borrow.due_date)
-                                  ? 'bg-red-100 text-red-800'
-                                  : getDaysUntilDue(borrow.due_date) <= 3 && getDaysUntilDue(borrow.due_date) >= 0
-                                    ? 'bg-yellow-100 text-yellow-800'
-                                    : 'bg-blue-100 text-blue-800'
-                            ]">
-                        {{ borrow.returned_date ? '✅ 返却済み' : 
-                           isOverdue(borrow.due_date) ? '⚠️ 期限切れ' :
-                           getDaysUntilDue(borrow.due_date) <= 3 && getDaysUntilDue(borrow.due_date) >= 0 ? '⏰ 要注意' : 
-                           '📖 貸出中' }}
-                      </span>
-                    </div>
-                    
-                    <p class="text-sm text-gray-600 mb-2">{{ borrow.book.author }}</p>
-                    
-                    <div class="grid grid-cols-2 gap-2 text-xs text-gray-500">
-                      <div>📅 貸出: {{ formatDate(borrow.borrowed_date) }}</div>
-                      <div>⏰ 期限: {{ formatDate(borrow.due_date) }}</div>
-                      <div v-if="borrow.returned_date" class="text-green-600">✅ 返却: {{ formatDate(borrow.returned_date) }}</div>
-                      <div v-else-if="!borrow.returned_date && isOverdue(borrow.due_date)" class="text-red-600">
-                        ⚠️ {{ Math.abs(getDaysUntilDue(borrow.due_date)) }}日超過
-                      </div>
-                      <div v-else-if="!borrow.returned_date && getDaysUntilDue(borrow.due_date) <= 3 && getDaysUntilDue(borrow.due_date) >= 0" class="text-yellow-600">
-                        ⏰ あと{{ getDaysUntilDue(borrow.due_date) }}日
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            <!-- 貸出履歴が空の場合のメッセージ -->
-            <div v-if="!selectedStudent?.borrow_history || selectedStudent.borrow_history.length === 0" 
-                 class="text-center py-8 text-gray-500">
-              <div class="text-4xl mb-2">📚</div>
-              <p>まだ貸出履歴がありません</p>
-            </div>
-          </div>
-
           <!-- 現在借りている本（改善版） -->
           <div v-if="selectedStudent?.active_borrows?.length > 0" class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
             <div class="flex items-center justify-between mb-4">
@@ -761,7 +704,7 @@
                   
                   <!-- 返却ボタン -->
                   <button
-                    @click="returnBook(borrow)"
+                    @click="() => { console.log('返却ボタンクリック:', borrow); returnBook(borrow); }"
                     :disabled="processingReturn"
                     class="px-3 py-1 text-sm text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all"
                   >
@@ -769,6 +712,63 @@
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+
+          <!-- 貸出履歴（改善版） -->
+          <div class="bg-gradient-to-r from-gray-50 to-slate-50 rounded-lg p-4 border border-gray-200">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+              📚 貸出履歴 
+              <span class="bg-gray-600 text-white text-sm px-2 py-1 rounded-full">{{ selectedStudent?.borrow_history?.length || 0 }}冊</span>
+            </h3>
+            
+            <div class="space-y-3 max-h-96 overflow-y-auto">
+              <div v-for="borrow in selectedStudent?.borrow_history" :key="borrow.id" 
+                  class="bg-white rounded-lg p-3 border shadow-sm hover:shadow-md transition-shadow">
+                <div class="flex justify-between items-start">
+                  <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-2">
+                      <h4 class="font-medium text-gray-900">{{ borrow.book.title }}</h4>
+                      <span class="px-2 py-1 text-xs rounded-full"
+                            :class="[
+                              borrow.returned_date
+                                ? 'bg-green-100 text-green-800'
+                                : isOverdue(borrow.due_date)
+                                  ? 'bg-red-100 text-red-800'
+                                  : getDaysUntilDue(borrow.due_date) <= 3 && getDaysUntilDue(borrow.due_date) >= 0
+                                    ? 'bg-yellow-100 text-yellow-800'
+                                    : 'bg-blue-100 text-blue-800'
+                            ]">
+                        {{ borrow.returned_date ? '✅ 返却済み' : 
+                           isOverdue(borrow.due_date) ? '⚠️ 期限切れ' :
+                           getDaysUntilDue(borrow.due_date) <= 3 && getDaysUntilDue(borrow.due_date) >= 0 ? '⏰ 要注意' : 
+                           '📖 貸出中' }}
+                      </span>
+                    </div>
+                    
+                    <p class="text-sm text-gray-600 mb-2">{{ borrow.book.author }}</p>
+                    
+                    <div class="grid grid-cols-2 gap-2 text-xs text-gray-500">
+                      <div>📅 貸出: {{ formatDate(borrow.borrowed_date) }}</div>
+                      <div>⏰ 期限: {{ formatDate(borrow.due_date) }}</div>
+                      <div v-if="borrow.returned_date" class="text-green-600">✅ 返却: {{ formatDate(borrow.returned_date) }}</div>
+                      <div v-else-if="!borrow.returned_date && isOverdue(borrow.due_date)" class="text-red-600">
+                        ⚠️ {{ Math.abs(getDaysUntilDue(borrow.due_date)) }}日超過
+                      </div>
+                      <div v-else-if="!borrow.returned_date && getDaysUntilDue(borrow.due_date) <= 3 && getDaysUntilDue(borrow.due_date) >= 0" class="text-yellow-600">
+                        ⏰ あと{{ getDaysUntilDue(borrow.due_date) }}日
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- 貸出履歴が空の場合のメッセージ -->
+            <div v-if="!selectedStudent?.borrow_history || selectedStudent.borrow_history.length === 0" 
+                 class="text-center py-8 text-gray-500">
+              <div class="text-4xl mb-2">📚</div>
+              <p>まだ貸出履歴がありません</p>
             </div>
           </div>
         </div>
@@ -1173,16 +1173,21 @@ const showBorrowHistory = async (student) => {
 
 // 本の返却処理
 const returnBook = async (borrow) => {
+  console.log('返却処理開始:', borrow);
   try {
     processingReturn.value = true;
-    await axios.patch(`/api/borrows/${borrow.id}/return`);
+    console.log('返却API呼び出し:', `/api/borrows/${borrow.id}/return`);
+    const response = await axios.patch(`/api/borrows/${borrow.id}/return`);
+    console.log('返却API成功:', response.data);
     // 貸出履歴を再読み込み
     await showBorrowHistory(selectedStudent.value);
     // 選択状態をクリア
     selectedBorrows.value = [];
+    console.log('返却処理完了');
   } catch (err) {
-    error.value = '本の返却処理に失敗しました';
-    console.error(err);
+    error.value = '本の返却処理に失敗しました: ' + (err.response?.data?.message || err.message);
+    console.error('返却処理エラー:', err);
+    console.error('エラーレスポンス:', err.response?.data);
   } finally {
     processingReturn.value = false;
   }

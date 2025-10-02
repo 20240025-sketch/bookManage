@@ -134,7 +134,8 @@
               </button>
             </div>
 
-            <div v-if="book.borrow_history?.length > 0" class="space-y-4">
+            <!-- 初期表示の履歴（最初の数件） -->
+            <div v-if="!showAllHistory && book.borrow_history?.length > 0" class="space-y-4">
               <div 
                 v-for="history in book.borrow_history" 
                 :key="history.id"
@@ -158,7 +159,99 @@
               </div>
             </div>
 
-            <div v-else class="text-center py-4 text-gray-500">
+            <!-- ページネーション付き履歴 -->
+            <div v-else-if="showAllHistory">
+              <!-- ローディング -->
+              <div v-if="historyLoading" class="text-center py-4">
+                <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                <p class="mt-2 text-sm text-gray-600">履歴を読み込み中...</p>
+              </div>
+
+              <!-- 履歴データ -->
+              <div v-else-if="historyData.length > 0" class="space-y-4">
+                <div 
+                  v-for="history in historyData" 
+                  :key="history.id"
+                  class="bg-gray-50 p-4 rounded-lg"
+                >
+                  <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center">
+                      <span class="font-medium text-gray-900">
+                        {{ history.student.grade }}年
+                        {{ history.student.class }}
+                        {{ history.student.name }}
+                      </span>
+                      <span v-if="history.is_overdue" class="ml-2 px-2 py-1 text-xs font-medium bg-red-100 text-red-800 rounded-full">
+                        延滞
+                      </span>
+                    </div>
+                    <span class="text-sm text-gray-500">
+                      {{ history.duration }}
+                    </span>
+                  </div>
+                  <div class="text-sm text-gray-600">
+                    {{ history.borrowed_date }} 〜 {{ history.returned_date }}
+                  </div>
+                  <div class="text-xs text-gray-500 mt-1">
+                    返却予定: {{ history.due_date }}
+                  </div>
+                </div>
+
+                <!-- ページネーション -->
+                <div v-if="historyPagination.last_page > 1" class="flex items-center justify-between border-t pt-4 mt-6">
+                  <div class="flex items-center space-x-2">
+                    <span class="text-sm text-gray-700">
+                      {{ historyPagination.from || 0 }}-{{ historyPagination.to || 0 }} / {{ historyPagination.total }}件
+                    </span>
+                  </div>
+                  
+                  <div class="flex items-center space-x-1">
+                    <!-- 前のページ -->
+                    <button
+                      @click="loadHistory(historyPagination.current_page - 1)"
+                      :disabled="historyPagination.current_page <= 1"
+                      class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      ←
+                    </button>
+
+                    <!-- ページ番号 -->
+                    <template v-for="page in getPageRange(historyPagination.current_page, historyPagination.last_page)" :key="page">
+                      <button
+                        v-if="page !== '...'"
+                        @click="loadHistory(page)"
+                        :class="[
+                          'px-3 py-2 text-sm font-medium rounded-md',
+                          page === historyPagination.current_page
+                            ? 'bg-blue-600 text-white'
+                            : 'text-gray-700 bg-white border border-gray-300 hover:bg-gray-50'
+                        ]"
+                      >
+                        {{ page }}
+                      </button>
+                      <span v-else class="px-2 py-2 text-sm text-gray-500">...</span>
+                    </template>
+
+                    <!-- 次のページ -->
+                    <button
+                      @click="loadHistory(historyPagination.current_page + 1)"
+                      :disabled="historyPagination.current_page >= historyPagination.last_page"
+                      class="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      →
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <!-- データなし -->
+              <div v-else class="text-center py-4 text-gray-500">
+                貸出履歴はありません
+              </div>
+            </div>
+
+            <!-- 初期状態でデータなし -->
+            <div v-else-if="!book.borrow_history?.length" class="text-center py-4 text-gray-500">
               貸出履歴はありません
             </div>
           </div>
@@ -226,7 +319,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, onActivated, onBeforeUnmount, computed, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
 
@@ -238,18 +331,84 @@ const loading = ref(true);
 const error = ref('');
 const showAllHistory = ref(false);
 
-// 全履歴を読み込む
-const loadFullHistory = async () => {
+// ページネーション用の変数
+const historyPagination = ref({
+  current_page: 1,
+  last_page: 1,
+  per_page: 10,
+  total: 0,
+  from: null,
+  to: null
+});
+const historyData = ref([]);
+const historyLoading = ref(false);
+
+// ページネーション付き履歴を読み込む
+const loadHistory = async (page = 1) => {
   try {
-    loading.value = true;
-    const response = await axios.get(`/api/books/${route.params.id}/history`);
-    book.value.borrow_history = response.data.data;
+    historyLoading.value = true;
+    const response = await axios.get(`/api/books/${route.params.id}/history`, {
+      params: {
+        page: page,
+        per_page: historyPagination.value.per_page
+      }
+    });
+    
+    historyData.value = response.data.data;
+    historyPagination.value = response.data.pagination;
     showAllHistory.value = true;
   } catch (err) {
     error.value = '履歴の取得に失敗しました';
   } finally {
-    loading.value = false;
+    historyLoading.value = false;
   }
+};
+
+// 全履歴を読み込む（後方互換性のため残す）
+const loadFullHistory = () => {
+  loadHistory(1);
+};
+
+// ページ範囲を計算する関数
+const getPageRange = (currentPage, lastPage) => {
+  const range = [];
+  const delta = 2; // 現在のページの前後に表示するページ数
+
+  // 開始ページ
+  let start = Math.max(1, currentPage - delta);
+  let end = Math.min(lastPage, currentPage + delta);
+
+  // 範囲を調整
+  if (end - start < delta * 2) {
+    if (start === 1) {
+      end = Math.min(lastPage, start + delta * 2);
+    } else if (end === lastPage) {
+      start = Math.max(1, end - delta * 2);
+    }
+  }
+
+  // 最初のページ
+  if (start > 1) {
+    range.push(1);
+    if (start > 2) {
+      range.push('...');
+    }
+  }
+
+  // 中央のページ範囲
+  for (let i = start; i <= end; i++) {
+    range.push(i);
+  }
+
+  // 最後のページ
+  if (end < lastPage) {
+    if (end < lastPage - 1) {
+      range.push('...');
+    }
+    range.push(lastPage);
+  }
+
+  return range;
 };
 
 // 受け入れ情報があるかどうか
@@ -318,9 +477,49 @@ const formatDateTime = (dateString) => {
   return new Date(dateString).toLocaleString('ja-JP');
 };
 
+// 初期ロードと、ルートパラメータが変更された時にデータを再読み込み
 onMounted(() => {
   loadBook();
 });
+
+// ウィンドウにフォーカスが戻った時にデータを更新（他のタブで操作された可能性に対応）
+const handleFocus = () => {
+  loadBook();
+};
+
+onMounted(() => {
+  window.addEventListener('focus', handleFocus);
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener('focus', handleFocus);
+});
+
+// コンポーネントがアクティブになった時（keep-alive使用時やページ遷移から戻った時）
+onActivated(() => {
+  // データをリセットして強制的に再読み込み
+  book.value = null;
+  loading.value = true;
+  error.value = '';
+  showAllHistory.value = false;
+  historyData.value = [];
+  loadBook();
+});
+
+// ルートパラメータの変更を監視してデータを再読み込み
+watch(
+  () => route.params.id,
+  (newId, oldId) => {
+    if (newId && newId !== oldId) {
+      book.value = null;
+      loading.value = true;
+      error.value = '';
+      showAllHistory.value = false;
+      historyData.value = [];
+      loadBook();
+    }
+  }
+);
 
 console.log('BookShow.vue loaded successfully');
 </script>

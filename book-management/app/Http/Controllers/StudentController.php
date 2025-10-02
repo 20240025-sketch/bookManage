@@ -64,9 +64,8 @@ class StudentController extends Controller
         $studentsWithAchievements = $students->getCollection()->map(function ($student) {
             $student->load('schoolClass'); // クラス情報を遅延読み込み
             $studentArray = $student->toArray();
-            // 一時的にアチーブメント情報を無効化
-            // $studentArray['achievement'] = $student->achievement;
-            // $studentArray['ndc_achievements'] = $student->ndc_achievements;
+            $studentArray['achievement'] = $student->achievement;
+            $studentArray['ndc_achievements'] = $student->ndc_achievements;
             return $studentArray;
         });
 
