@@ -152,7 +152,15 @@ class AuthController extends Controller
             ], 422);
         }
 
-        $student = Auth::user();
+        $authUser = Auth::user();
+        $student = Student::find($authUser->id);
+
+        if (!$student) {
+            return response()->json([
+                'success' => false,
+                'message' => 'ユーザーが見つかりません。'
+            ], 404);
+        }
 
         if (!Hash::check($request->current_password, $student->password)) {
             return response()->json([

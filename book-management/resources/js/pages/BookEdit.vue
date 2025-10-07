@@ -133,9 +133,6 @@ const updateBook = async () => {
     if (!form.title?.trim()) {
       errors.value.push('タイトルは必須です');
     }
-    if (!form.author?.trim()) {
-      errors.value.push('著者は必須です');
-    }
     
     if (errors.value.length > 0) {
       loading.value = false;

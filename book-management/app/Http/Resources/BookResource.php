@@ -27,6 +27,7 @@ class BookResource extends JsonResource
             'acceptance_type' => $this->acceptance_type,
             'acceptance_source' => $this->acceptance_source,
             'discard' => $this->discard,
+            'storage_location' => $this->storage_location,
             'current_borrowed_count' => $this->borrows->where('returned_date', null)->count(),
             'available_quantity' => ($this->quantity ?? 1) - $this->borrows->where('returned_date', null)->count(),
             'is_borrowed' => $this->borrows->contains(function ($borrow) {

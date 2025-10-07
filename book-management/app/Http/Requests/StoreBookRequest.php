@@ -28,6 +28,7 @@ class StoreBookRequest extends FormRequest
             'acceptance_type' => 'nullable|string|max:255',
             'acceptance_source' => 'nullable|string|max:255',
             'discard' => 'nullable|string|max:255',
+            'storage_location' => 'nullable|string|max:255',
         ];
     }
 

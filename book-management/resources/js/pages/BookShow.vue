@@ -276,6 +276,11 @@
                 <dd class="mt-1 text-sm text-gray-900">{{ book.acceptance_source }}</dd>
               </div>
               
+              <div v-if="book.storage_location">
+                <dt class="text-sm font-medium text-gray-500">保管場所</dt>
+                <dd class="mt-1 text-sm text-gray-900">{{ book.storage_location }}</dd>
+              </div>
+              
               <div v-if="book.discard">
                 <dt class="text-sm font-medium text-gray-500">廃棄情報</dt>
                 <dd class="mt-1">
@@ -468,6 +473,7 @@ const hasAcceptanceInfo = computed(() => {
     book.value.acceptance_date || 
     book.value.acceptance_type || 
     book.value.acceptance_source || 
+    book.value.storage_location ||
     book.value.discard
   );
 });
@@ -482,6 +488,7 @@ const loadBook = async () => {
     const response = await axios.get(`/api/books/${route.params.id}`);
     book.value = response.data.data || response.data;
     console.log('Book data loaded:', book.value);
+    console.log('Storage location:', book.value.storage_location);
     
     // 独自JANコードの場合、バーコードを生成
     if (book.value && book.value.isbn && book.value.isbn.startsWith('938525')) {

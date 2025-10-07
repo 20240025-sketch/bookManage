@@ -226,29 +226,64 @@
             受け入れ元
             <span class="text-sm font-normal text-gray-500">（選択または自由入力）</span>
           </label>
-          <input
-            id="acceptance_source"
-            v-model="form.acceptance_source"
-            list="acceptance_source_options"
-            type="text"
-            placeholder="選択または入力してください"
-            class="form-input"
-            @focus="loadAcceptanceSources"
-          />
-          <datalist id="acceptance_source_options">
-            <option 
-              v-for="source in acceptanceSources" 
-              :key="source" 
-              :value="source"
+          
+          <!-- 選択モードと入力モードの切り替え -->
+          <div class="space-y-2">
+            <div class="flex items-center space-x-2 mb-2">
+              <label class="inline-flex items-center">
+                <input 
+                  type="radio" 
+                  v-model="acceptanceSourceMode" 
+                  value="select"
+                  class="form-radio h-4 w-4 text-blue-600"
+                >
+                <span class="ml-2 text-sm text-gray-700">候補から選択</span>
+              </label>
+              <label class="inline-flex items-center">
+                <input 
+                  type="radio" 
+                  v-model="acceptanceSourceMode" 
+                  value="input"
+                  class="form-radio h-4 w-4 text-blue-600"
+                >
+                <span class="ml-2 text-sm text-gray-700">自由入力</span>
+              </label>
+            </div>
+            
+            <!-- 選択モード -->
+            <select
+              v-if="acceptanceSourceMode === 'select'"
+              id="acceptance_source_select"
+              v-model="form.acceptance_source"
+              class="form-select"
+              @focus="loadAcceptanceSources"
             >
-              {{ source }}
-            </option>
-          </datalist>
-          <p class="mt-1 text-xs text-gray-500">
-            💡 入力欄をクリックして候補から選択するか、直接入力してください
-          </p>
+              <option value="">選択してください</option>
+              <option 
+                v-for="source in acceptanceSources" 
+                :key="source" 
+                :value="source"
+              >
+                {{ source }}
+              </option>
+            </select>
+            
+            <!-- 入力モード -->
+            <input
+              v-else
+              id="acceptance_source"
+              v-model="form.acceptance_source"
+              type="text"
+              placeholder="受け入れ元を入力してください"
+              class="form-input"
+            />
+          </div>
+          
           <p v-if="sourcesLoading" class="mt-1 text-xs text-blue-600">
             候補を読み込み中...
+          </p>
+          <p class="mt-1 text-xs text-gray-500">
+            💡 候補から選択するか、自由入力を選んでください（{{ acceptanceSources.length }}件の候補）
           </p>
           <p v-if="errors.acceptance_source" class="mt-1 text-sm text-red-600">{{ errors.acceptance_source[0] }}</p>
         </div>
@@ -259,21 +294,56 @@
             保管場所
             <span class="text-sm font-normal text-gray-500">（選択または自由入力）</span>
           </label>
-          <input
-            id="storage_location"
-            v-model="form.storage_location"
-            list="storage_location_options"
-            type="text"
-            placeholder="保管場所を選択または入力してください"
-            class="form-input"
-          />
-          <datalist id="storage_location_options">
-            <option value="職員室">職員室</option>
-            <option value="図書室">図書室</option>
-            <option value="生物室">生物室</option>
-          </datalist>
+          
+          <!-- 選択モードと入力モードの切り替え -->
+          <div class="space-y-2">
+            <div class="flex items-center space-x-2 mb-2">
+              <label class="inline-flex items-center">
+                <input 
+                  type="radio" 
+                  v-model="storageLocationMode" 
+                  value="select"
+                  class="form-radio h-4 w-4 text-blue-600"
+                >
+                <span class="ml-2 text-sm text-gray-700">候補から選択</span>
+              </label>
+              <label class="inline-flex items-center">
+                <input 
+                  type="radio" 
+                  v-model="storageLocationMode" 
+                  value="input"
+                  class="form-radio h-4 w-4 text-blue-600"
+                >
+                <span class="ml-2 text-sm text-gray-700">自由入力</span>
+              </label>
+            </div>
+            
+            <!-- 選択モード -->
+            <select
+              v-if="storageLocationMode === 'select'"
+              id="storage_location_select"
+              v-model="form.storage_location"
+              class="form-select"
+            >
+              <option value="">選択してください</option>
+              <option value="職員室">職員室</option>
+              <option value="図書室">図書室</option>
+              <option value="生物室">生物室</option>
+            </select>
+            
+            <!-- 入力モード -->
+            <input
+              v-else
+              id="storage_location"
+              v-model="form.storage_location"
+              type="text"
+              placeholder="保管場所を入力してください"
+              class="form-input"
+            />
+          </div>
+          
           <p class="mt-1 text-xs text-gray-500">
-            💡 入力欄をクリックして候補から選択するか、直接入力してください
+            💡 候補から選択するか、自由入力を選んでください
           </p>
           <p v-if="errors.storage_location" class="mt-1 text-sm text-red-600">{{ errors.storage_location[0] }}</p>
         </div>
@@ -375,6 +445,8 @@ const emit = defineEmits(['submit', 'reset', 'isbn-blur']);
 const acceptanceSources = ref([]);
 const sourcesLoading = ref(false);
 const sourcesLoaded = ref(false);
+const acceptanceSourceMode = ref('select');
+const storageLocationMode = ref('select');
 
 // デフォルトの候補（APIが利用できない場合のフォールバック）
 const defaultAcceptanceSources = [
@@ -404,14 +476,17 @@ const loadAcceptanceSources = async () => {
     if (response.data && response.data.sources) {
       acceptanceSources.value = response.data.sources;
       console.log('受け入れ元候補を読み込みました:', response.data.sources.length + '件');
+      console.log('Loaded acceptance sources:', response.data.sources);
     } else {
-      acceptanceSources.value = defaultAcceptanceSources;
+      acceptanceSources.value = [...defaultAcceptanceSources];
+      console.log('Using default acceptance sources (no API data):', acceptanceSources.value);
     }
     
     sourcesLoaded.value = true;
   } catch (error) {
     console.warn('受け入れ元候補の読み込みに失敗しました、デフォルト候補を使用します:', error);
-    acceptanceSources.value = defaultAcceptanceSources;
+    acceptanceSources.value = [...defaultAcceptanceSources];
+    console.log('Using default acceptance sources:', acceptanceSources.value);
   } finally {
     sourcesLoading.value = false;
   }
@@ -419,6 +494,7 @@ const loadAcceptanceSources = async () => {
 
 // 初回ロード時にデフォルト候補をセット
 onMounted(() => {
-  acceptanceSources.value = defaultAcceptanceSources;
+  acceptanceSources.value = [...defaultAcceptanceSources];
+  console.log('BookForm mounted, acceptance sources initialized:', acceptanceSources.value.length);
 });
 </script>
