@@ -77,7 +77,7 @@
       </div>
 
       <!-- ISBN -->
-      <div>
+      <div v-if="!noIsbnMode">
         <label for="isbn" class="block text-sm font-medium text-gray-700 mb-2">
           ISBN
         </label>
@@ -102,6 +102,18 @@
            :class="isbnSearchSuccess ? 'text-green-600' : 'text-red-600'">
           {{ isbnSearchMessage }}
         </p>
+      </div>
+      
+      <!-- ISBNなしモード時のメッセージ -->
+      <div v-if="noIsbnMode" class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div class="flex items-center">
+          <svg class="w-5 h-5 text-blue-600 mr-2" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path>
+          </svg>
+          <p class="text-sm text-blue-800">
+            ISBNコードがない本として登録します。書籍情報は手動で入力してください。
+          </p>
+        </div>
       </div>
 
       <!-- ページ数 -->
@@ -241,6 +253,31 @@
           <p v-if="errors.acceptance_source" class="mt-1 text-sm text-red-600">{{ errors.acceptance_source[0] }}</p>
         </div>
 
+        <!-- 保管場所 -->
+        <div>
+          <label for="storage_location" class="block text-sm font-medium text-gray-700 mb-2">
+            保管場所
+            <span class="text-sm font-normal text-gray-500">（選択または自由入力）</span>
+          </label>
+          <input
+            id="storage_location"
+            v-model="form.storage_location"
+            list="storage_location_options"
+            type="text"
+            placeholder="保管場所を選択または入力してください"
+            class="form-input"
+          />
+          <datalist id="storage_location_options">
+            <option value="職員室">職員室</option>
+            <option value="図書室">図書室</option>
+            <option value="生物室">生物室</option>
+          </datalist>
+          <p class="mt-1 text-xs text-gray-500">
+            💡 入力欄をクリックして候補から選択するか、直接入力してください
+          </p>
+          <p v-if="errors.storage_location" class="mt-1 text-sm text-red-600">{{ errors.storage_location[0] }}</p>
+        </div>
+
         <!-- 廃棄情報 -->
         <div>
           <label for="discard" class="block text-sm font-medium text-gray-700 mb-2">
@@ -323,6 +360,10 @@ const props = defineProps({
     default: ''
   },
   isbnSearchSuccess: {
+    type: Boolean,
+    default: false
+  },
+  noIsbnMode: {
     type: Boolean,
     default: false
   }

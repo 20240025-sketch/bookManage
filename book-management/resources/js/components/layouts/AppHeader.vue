@@ -12,22 +12,6 @@
           </div>
         </div>
 
-        <!-- 検索バー -->
-        <div class="flex-1 max-w-lg mx-8">
-          <div class="relative">
-            <input
-              type="text"
-              placeholder="書籍を検索..."
-              class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              v-model="searchQuery"
-              @input="handleSearch"
-            >
-            <svg class="absolute left-3 top-2.5 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-            </svg>
-          </div>
-        </div>
-
         <!-- ユーザーメニュー -->
         <div class="flex items-center space-x-4">
           <!-- 通知ベル -->
@@ -39,15 +23,15 @@
           </button>
 
           <!-- ユーザーアバター -->
-          <div class="relative">
+          <div class="relative" v-if="currentStudent">
             <button 
               @click="toggleUserMenu"
               class="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
-                U
+                {{ currentStudent.name.charAt(0) }}
               </div>
-              <span class="text-sm font-medium text-gray-700">ユーザー</span>
+              <span class="text-sm font-medium text-gray-700">{{ currentStudent.name }}</span>
               <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
               </svg>
@@ -55,11 +39,20 @@
 
             <!-- ドロップダウンメニュー -->
             <div v-if="showUserMenu" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
-              <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">プロフィール</a>
-              <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">設定</a>
+              <div class="px-4 py-2 text-xs text-gray-500 border-b">
+                {{ currentStudent.email }}
+              </div>
+              <button @click="changePassword" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">パスワード変更</button>
               <hr class="my-1">
-              <a href="#" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">ログアウト</a>
+              <button @click="logout" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">ログアウト</button>
             </div>
+          </div>
+          
+          <!-- ログインボタン（未認証時） -->
+          <div v-else>
+            <a href="/login" class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+              ログイン
+            </a>
           </div>
         </div>
       </div>
@@ -68,18 +61,42 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed, onMounted } from 'vue';
+import { useRouter } from 'vue-router';
+import axios from 'axios';
 
-const searchQuery = ref('');
+const router = useRouter();
 const showUserMenu = ref(false);
+const currentStudent = ref(null);
 
-const handleSearch = () => {
-  // 検索機能は後で実装
-  console.log('検索:', searchQuery.value);
+// 認証されたユーザー情報を取得
+const loadCurrentStudent = () => {
+  const student = localStorage.getItem('student');
+  if (student) {
+    currentStudent.value = JSON.parse(student);
+  }
 };
 
 const toggleUserMenu = () => {
   showUserMenu.value = !showUserMenu.value;
+};
+
+const logout = async () => {
+  try {
+    await axios.post('/api/logout');
+  } catch (error) {
+    console.error('Logout error:', error);
+  } finally {
+    // ローカルストレージをクリア
+    localStorage.removeItem('student');
+    currentStudent.value = null;
+    // ログインページにリダイレクト
+    router.push('/login');
+  }
+};
+
+const changePassword = () => {
+  router.push('/password-change');
 };
 
 // クリック外でメニューを閉じる
@@ -87,5 +104,9 @@ document.addEventListener('click', (e) => {
   if (!e.target.closest('.relative')) {
     showUserMenu.value = false;
   }
+});
+
+onMounted(() => {
+  loadCurrentStudent();
 });
 </script>

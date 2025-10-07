@@ -312,6 +312,53 @@
               </div>
             </dl>
           </div>
+
+          <!-- バーコード情報（独自JANコードの場合のみ表示） -->
+          <div v-if="isCustomJanCode" class="bg-white rounded-lg shadow p-6 mt-6">
+            <h2 class="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+              <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+              </svg>
+              生成バーコード
+            </h2>
+            
+            <div class="space-y-4">
+              <div>
+                <dt class="text-sm font-medium text-gray-500 mb-2">JANコード</dt>
+                <dd class="text-lg font-mono font-bold text-gray-900 mb-3">{{ book.isbn }}</dd>
+              </div>
+              
+              <!-- バーコード表示エリア -->
+              <div class="bg-gray-50 border border-gray-200 rounded-lg p-4 text-center">
+                <div class="mb-2">
+                  <span class="text-sm font-medium text-gray-700">バーコード</span>
+                </div>
+                <canvas 
+                  ref="barcodeCanvas" 
+                  class="mx-auto border bg-white rounded"
+                  style="max-width: 100%; height: auto;"
+                ></canvas>
+              </div>
+              
+              <!-- PDF出力ボタン -->
+              <div class="flex justify-center">
+                <button
+                  @click="downloadBarcodePdf"
+                  :disabled="downloadingPdf"
+                  class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white text-sm font-medium rounded-md transition-colors"
+                >
+                  <svg v-if="!downloadingPdf" class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                  </svg>
+                  <svg v-else class="animate-spin w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  {{ downloadingPdf ? 'PDF生成中...' : 'バーコードPDFダウンロード' }}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -319,7 +366,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onActivated, onBeforeUnmount, computed, watch } from 'vue';
+import { ref, onMounted, onActivated, onBeforeUnmount, computed, watch, nextTick } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import axios from 'axios';
 
@@ -330,6 +377,10 @@ const book = ref(null);
 const loading = ref(true);
 const error = ref('');
 const showAllHistory = ref(false);
+
+// バーコード関連の変数
+const barcodeCanvas = ref(null);
+const downloadingPdf = ref(false);
 
 // ページネーション用の変数
 const historyPagination = ref({
@@ -421,11 +472,23 @@ const hasAcceptanceInfo = computed(() => {
   );
 });
 
+// 独自JANコードかどうかを判定
+const isCustomJanCode = computed(() => {
+  return book.value && book.value.isbn && book.value.isbn.startsWith('938525');
+});
+
 const loadBook = async () => {
   try {
     const response = await axios.get(`/api/books/${route.params.id}`);
     book.value = response.data.data || response.data;
     console.log('Book data loaded:', book.value);
+    
+    // 独自JANコードの場合、バーコードを生成
+    if (book.value && book.value.isbn && book.value.isbn.startsWith('938525')) {
+      // DOM更新を待ってからバーコード生成
+      await nextTick();
+      generateBarcode(book.value.isbn);
+    }
   } catch (err) {
     console.error('Error loading book:', err);
     error.value = err.response?.data?.message || '書籍が見つかりませんでした';
@@ -520,6 +583,93 @@ watch(
     }
   }
 );
+
+// バーコード生成
+const generateBarcode = (code) => {
+  if (!barcodeCanvas.value) return;
+  
+  try {
+    // JsBarcode を使用
+    if (typeof JsBarcode !== 'undefined') {
+      JsBarcode(barcodeCanvas.value, code, {
+        format: "EAN13",
+        width: 2,
+        height: 100,
+        displayValue: true,
+        fontSize: 14,
+        margin: 10,
+        background: "#ffffff",
+        lineColor: "#000000"
+      });
+    } else {
+      // フォールバック: シンプルなテキスト表示
+      const ctx = barcodeCanvas.value.getContext('2d');
+      barcodeCanvas.value.width = 300;
+      barcodeCanvas.value.height = 120;
+      ctx.clearRect(0, 0, barcodeCanvas.value.width, barcodeCanvas.value.height);
+      ctx.font = '16px monospace';
+      ctx.fillStyle = '#000000';
+      ctx.textAlign = 'center';
+      ctx.fillText(code, 150, 60);
+      ctx.font = '12px sans-serif';
+      ctx.fillText('バーコード表示にはJsBarcodeが必要です', 150, 80);
+    }
+  } catch (error) {
+    console.error('バーコード生成エラー:', error);
+  }
+};
+
+// バーコードPDFダウンロード
+const downloadBarcodePdf = async () => {
+  if (!book.value || !book.value.isbn) return;
+  
+  // カスタムJANコード（938525で始まる）以外はPDF生成しない
+  if (!book.value.isbn.startsWith('938525')) {
+    alert('この書籍はPDFダウンロードに対応していません');
+    return;
+  }
+  
+  downloadingPdf.value = true;
+  
+  try {
+    const response = await axios.post('/api/generate-barcode-pdf', {
+      jan_code: book.value.isbn
+    }, {
+      responseType: 'blob'
+    });
+    
+    // PDFファイルをダウンロード
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `barcode_${book.value.isbn}.pdf`);
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+    
+  } catch (error) {
+    console.error('PDF生成エラー:', error);
+    
+    // レスポンスがJSONエラーの場合の処理
+    if (error.response && error.response.data) {
+      const reader = new FileReader();
+      reader.onload = function() {
+        try {
+          const errorData = JSON.parse(reader.result);
+          alert(`PDFの生成に失敗しました: ${errorData.message || 'エラーが発生しました'}`);
+        } catch {
+          alert('PDFの生成に失敗しました');
+        }
+      };
+      reader.readAsText(error.response.data);
+    } else {
+      alert('PDFの生成に失敗しました');
+    }
+  } finally {
+    downloadingPdf.value = false;
+  }
+};
 
 console.log('BookShow.vue loaded successfully');
 </script>

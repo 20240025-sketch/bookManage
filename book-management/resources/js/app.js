@@ -4,6 +4,9 @@ import { createPinia } from 'pinia';
 import App from './App.vue';
 import router from './router/index.js';
 
+// Bootstrap (axios設定など)
+import './bootstrap.js';
+
 // CSS読み込み
 import '../css/app.css';
 

@@ -5,9 +5,17 @@
       <div class="flex items-center justify-between">
         <div>
           <h1 class="text-2xl font-bold text-gray-900">新規書籍登録</h1>
-          <p class="mt-1 text-sm text-gray-600">
-            新しい書籍を蔵書に追加します
-          </p>
+          <div class="mt-1 flex items-center gap-4">
+            <p class="text-sm text-gray-600">
+              新しい書籍を蔵書に追加します
+            </p>
+            <router-link
+              to="/books/create-no-isbn"
+              class="text-xs px-3 py-1 rounded-full border transition-colors bg-blue-100 text-blue-800 border-blue-300 hover:bg-blue-200"
+            >
+              ISBNコードのない本
+            </router-link>
+          </div>
         </div>
         <router-link
           to="/books"
@@ -20,20 +28,19 @@
 
     <!-- フォーム -->
     <div class="bg-white rounded-lg shadow p-6">
-      <BookForm
+        <BookForm
         v-model:form="form"
         :errors="errors"
         :loading="loading"
         :isbn-searching="isbnSearching"
         :isbn-search-message="isbnSearchMessage"
         :isbn-search-success="isbnSearchSuccess"
+        :no-isbn-mode="noIsbnMode"
         submit-label="書籍を登録"
         @submit="submitForm"
         @reset="resetForm"
-        @isbn-blur="fetchBookByIsbn"
-      />
-
-      <!-- エラー表示 -->
+        @isbn-blur="(isbn) => { fetchBookByIsbn(isbn); fetchBookByJanCode(isbn); }"
+      />      <!-- エラー表示 -->
       <div v-if="generalError" class="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
         <div class="flex">
           <svg class="w-5 h-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
@@ -70,6 +77,9 @@ const isbnSearching = ref(false);
 const isbnSearchMessage = ref('');
 const isbnSearchSuccess = ref(false);
 
+// ISBNなしモード
+const noIsbnMode = ref(false);
+
 const form = reactive({
   title: '',
   title_transcription: '',
@@ -84,7 +94,8 @@ const form = reactive({
   acceptance_date: '',
   acceptance_type: '',
   acceptance_source: '',
-  discard: ''
+  discard: '',
+  storage_location: ''
 });
 
 const fetchBookByIsbn = async (isbn) => {
@@ -137,6 +148,53 @@ const fetchBookByIsbn = async (isbn) => {
   }
 };
 
+const fetchBookByJanCode = async (janCode) => {
+  if (!janCode || janCode.length !== 13) {
+    return;
+  }
+
+  // 独自JANコード（938525で始まる）の場合のみ検索
+  if (!janCode.startsWith('938525')) {
+    return;
+  }
+
+  isbnSearching.value = true;
+  isbnSearchMessage.value = 'JANコード検索中...';
+  isbnSearchSuccess.value = false;
+  generalError.value = '';
+
+  try {
+    const response = await axios.get(`/api/books/search-by-jan`, { params: { jan_code: janCode } });
+    const data = response.data.data || response.data;
+    
+    // 取得できたフィールドのみformに反映
+    let updatedFields = [];
+    Object.keys(form).forEach(key => {
+      if (data[key] !== undefined && data[key] !== null && data[key] !== '') {
+        form[key] = data[key];
+        updatedFields.push(key);
+      }
+    });
+
+    if (updatedFields.length > 0) {
+      isbnSearchSuccess.value = true;
+      isbnSearchMessage.value = `登録済みJANコードから書籍情報を取得しました (${updatedFields.length}項目更新)`;
+    } else {
+      isbnSearchSuccess.value = false;
+      isbnSearchMessage.value = 'JANコードに対応する書籍が見つかりましたが、利用可能なデータがありませんでした。';
+    }
+  } catch (err) {
+    isbnSearchSuccess.value = false;
+    if (err.response?.status === 404) {
+      isbnSearchMessage.value = 'JANコード ' + janCode + ' に対応する書籍情報が見つかりませんでした。';
+    } else {
+      isbnSearchMessage.value = 'JANコード検索中にエラーが発生しました。';
+    }
+  } finally {
+    isbnSearching.value = false;
+  }
+};
+
 const resetForm = () => {
   Object.keys(form).forEach(key => {
     if (key === 'pages' || key === 'price') {
@@ -154,6 +212,17 @@ const resetForm = () => {
   isbnSearching.value = false;
   isbnSearchMessage.value = '';
   isbnSearchSuccess.value = false;
+};
+
+const toggleNoIsbnMode = () => {
+  noIsbnMode.value = !noIsbnMode.value;
+  
+  if (noIsbnMode.value) {
+    // ISBNなしモードの場合、ISBNフィールドをクリア
+    form.isbn = '';
+    isbnSearchMessage.value = '';
+    isbnSearchSuccess.value = false;
+  }
 };
 
 const submitForm = async () => {

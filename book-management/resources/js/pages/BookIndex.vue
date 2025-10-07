@@ -2,7 +2,7 @@
   <div class="container mx-auto px-4 py-8">
     <!-- フィルターセクション -->
     <div class="bg-white rounded-lg shadow p-6 mb-8">
-      <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div class="grid grid-cols-1 md:grid-cols-5 gap-6">
         <!-- 既存の検索フィールド -->
         <div>
           <label for="searchTitle" class="block text-sm font-medium text-gray-700 mb-1">
@@ -51,6 +51,39 @@
             <option value="700">700-799: 芸術・美術・音楽</option>
             <option value="800">800-899: 語学</option>
             <option value="900">900-999: 文学</option>
+          </select>
+        </div>
+
+        <!-- ISBNコード有無フィルター -->
+        <div>
+          <label for="isbnTypeFilter" class="block text-sm font-medium text-gray-700 mb-1">
+            ISBNコード
+          </label>
+          <select
+            id="isbnTypeFilter"
+            v-model="filters.isbnType"
+            class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          >
+            <option value="">すべて</option>
+            <option value="with_isbn">あり</option>
+            <option value="without_isbn">なし</option>
+          </select>
+        </div>
+
+        <!-- 保管場所フィルター -->
+        <div>
+          <label for="storageLocationFilter" class="block text-sm font-medium text-gray-700 mb-1">
+            保管場所
+          </label>
+          <select
+            id="storageLocationFilter"
+            v-model="filters.storageLocation"
+            class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          >
+            <option value="">すべて</option>
+            <option value="職員室">職員室</option>
+            <option value="図書室">図書室</option>
+            <option value="生物室">生物室</option>
           </select>
         </div>
 
@@ -234,7 +267,7 @@
               </div>
 
               <div class="space-y-4">
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm text-gray-600">
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-4 text-sm text-gray-600">
                   <div>
                     <span class="font-medium">著者:</span> {{ book.author || '不明' }}
                   </div>
@@ -243,6 +276,9 @@
                   </div>
                   <div v-if="book.published_date">
                     <span class="font-medium">出版日:</span> {{ formatDate(book.published_date) }}
+                  </div>
+                  <div v-if="book.storage_location">
+                    <span class="font-medium">保管場所:</span> {{ book.storage_location }}
                   </div>
                   <div>
                     <span class="font-medium">冊数:</span>
@@ -383,7 +419,9 @@ const filters = reactive({
   sortBy: 'created_at_desc',
   startDate: '',
   endDate: '',
-  ndc: ''
+  ndc: '',
+  isbnType: '',
+  storageLocation: ''
 });
 
 const loadBooks = async () => {
@@ -395,6 +433,8 @@ const loadBooks = async () => {
     if (filters.startDate) params.start_date = filters.startDate;
     if (filters.endDate) params.end_date = filters.endDate;
     if (filters.ndc) params.ndc_category = filters.ndc;
+    if (filters.isbnType) params.isbn_type = filters.isbnType;
+    if (filters.storageLocation) params.storage_location = filters.storageLocation;
     
     const response = await axios.get('/api/books', { params });
     books.value = response.data.data || response.data;
@@ -459,7 +499,7 @@ const filteredBooks = computed(() => {
 
 // アクティブなフィルターがあるかどうか
 const hasActiveFilters = computed(() => {
-  return filters.searchTitle || filters.searchAuthor || filters.startDate || filters.endDate || filters.ndc;
+  return filters.searchTitle || filters.searchAuthor || filters.startDate || filters.endDate || filters.ndc || filters.isbnType;
 });
 
 const applyFilters = () => {
@@ -473,6 +513,7 @@ const clearFilters = () => {
   filters.startDate = '';
   filters.endDate = '';
   filters.ndc = '';
+  filters.isbnType = '';
 };
 
 const formatDate = (dateString) => {
@@ -497,6 +538,11 @@ const exportPdf = async () => {
     }
     if (filters.endDate) {
       params.append('end_date', filters.endDate);
+    }
+
+    // ISBNコード有無フィルター
+    if (filters.isbnType) {
+      params.append('isbn_type', filters.isbnType);
     }
 
     // タイトル・著者フィルター（クライアントサイドフィルタリング）
@@ -572,7 +618,7 @@ onMounted(() => {
 });
 
 watch(
-  [() => filters.startDate, () => filters.endDate, () => filters.ndc],
+  [() => filters.startDate, () => filters.endDate, () => filters.ndc, () => filters.isbnType],
   () => loadBooks(),
   { deep: true }
 );

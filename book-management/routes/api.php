@@ -6,6 +6,7 @@ use App\Http\Controllers\Api\BookController;
 use App\Http\Controllers\BorrowController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\Api\BookRequestController;
+use App\Http\Controllers\Api\AuthController;
 
 // CORS対応のためのOPTIONSリクエスト処理
 Route::options('{any}', function () {
@@ -18,6 +19,7 @@ Route::options('{any}', function () {
 // 個別ルートを先に定義
 Route::post('books/search-isbn', [BookController::class, 'searchByISBN']);
 Route::get('books/search-by-isbn', [BookController::class, 'searchByISBN']);
+Route::get('books/search-by-jan', [BookController::class, 'searchByJanCode']);
 Route::get('books/pdf', [BookController::class, 'exportPdf']);
 Route::get('books/acceptance-sources', [BookController::class, 'getAcceptanceSources']);
 
@@ -33,6 +35,10 @@ Route::patch('borrows/{borrow}/return', [BorrowController::class, 'returnBook'])
 Route::get('borrows/recent', [BorrowController::class, 'recent']);
 Route::get('books/available', [BookController::class, 'available']);
 
+// JANコード生成のルート
+Route::post('generate-jan-code', [App\Http\Controllers\Api\JanCodeController::class, 'generateJanCode']);
+Route::post('generate-barcode-pdf', [App\Http\Controllers\Api\JanCodeController::class, 'generateBarcodePdf']);
+
 // 生徒管理のルート
 Route::get('students/classes', [StudentController::class, 'classes']);
 Route::apiResource('students', StudentController::class);
@@ -43,6 +49,13 @@ Route::get('book-requests', [BookRequestController::class, 'index']);
 Route::post('book-requests', [BookRequestController::class, 'store']);
 Route::patch('book-requests/{bookRequest}/status', [BookRequestController::class, 'updateStatus']);
 Route::delete('book-requests/{bookRequest}', [BookRequestController::class, 'destroy']);
+
+// 認証関連のルート
+Route::post('login', [AuthController::class, 'login']);
+Route::post('logout', [AuthController::class, 'logout'])->middleware('auth');
+Route::post('setup-password', [AuthController::class, 'setupPassword']);
+Route::post('change-password', [AuthController::class, 'changePassword'])->middleware('auth');
+Route::get('me', [AuthController::class, 'me'])->middleware('auth');
 
 // テスト用エンドポイント
 Route::get('test-ndl/{isbn}', function($isbn) {

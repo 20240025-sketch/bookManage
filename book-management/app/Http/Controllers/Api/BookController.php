@@ -9,6 +9,7 @@ use App\Http\Resources\BookResource;
 use App\Models\Book;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 use GuzzleHttp\Client;
 
 class BookController extends Controller
@@ -49,6 +50,31 @@ class BookController extends Controller
             $query->readingStatus($request->reading_status);
         }
 
+        // ISBNコード有無フィルター
+        if ($request->filled('isbn_type')) {
+            $isbnType = $request->isbn_type;
+            if ($isbnType === 'with_isbn') {
+                // ISBNコードあり：カスタムJANコード（938525で始まる）以外
+                $query->where(function($q) {
+                    $q->whereNotNull('isbn')
+                      ->where('isbn', '!=', '')
+                      ->where('isbn', 'not like', '938525%');
+                });
+            } elseif ($isbnType === 'without_isbn') {
+                // ISBNコードなし：カスタムJANコード（938525で始まる）または空
+                $query->where(function($q) {
+                    $q->whereNull('isbn')
+                      ->orWhere('isbn', '=', '')
+                      ->orWhere('isbn', 'like', '938525%');
+                });
+            }
+        }
+
+        // 保管場所フィルター
+        if ($request->filled('storage_location')) {
+            $query->where('storage_location', $request->storage_location);
+        }
+
         // 受入日範囲フィルター
         if ($request->filled('start_date') || $request->filled('end_date')) {
             $query->whereNotNull('acceptance_date');
@@ -82,10 +108,27 @@ class BookController extends Controller
     public function store(StoreBookRequest $request)
     {
         try {
+            DB::beginTransaction();
+            
             $book = Book::create($request->validated());
+            
+            // JANコードが含まれている場合（独自JANコード登録）
+            if ($request->has('jan_code')) {
+                $janCode = $request->jan_code;
+                
+                // JANコードレコードを更新して書籍と関連付け
+                \App\Models\JanCode::where('jan_code', $janCode)
+                    ->update([
+                        'book_id' => $book->id,
+                        'is_used' => true
+                    ]);
+            }
+            
+            DB::commit();
             
             return new BookResource($book);
         } catch (\Exception $e) {
+            DB::rollBack();
             Log::error('Book creation failed: ' . $e->getMessage());
             return response()->json([
                 'message' => '書籍の作成に失敗しました',
@@ -100,6 +143,15 @@ class BookController extends Controller
             $query->orderBy('borrowed_date', 'desc')
                   ->with('student');
         }]);
+        
+        // 独自JANコードの場合、JANコード情報も読み込み
+        if ($book->isbn && strlen($book->isbn) === 13 && str_starts_with($book->isbn, '938525')) {
+            $janCodeRecord = \App\Models\JanCode::where('jan_code', $book->isbn)->first();
+            if ($janCodeRecord) {
+                $book->jan_code_info = $janCodeRecord;
+            }
+        }
+        
         return new BookResource($book);
     }
 
@@ -560,6 +612,29 @@ class BookController extends Controller
                 }
             }
 
+            // ISBNコード有無フィルター
+            if ($request->filled('isbn_type')) {
+                $isbnType = $request->isbn_type;
+                if ($isbnType === 'with_isbn') {
+                    // ISBNコードあり：カスタムJANコード（938525で始まる）以外
+                    $query->where(function($q) {
+                        $q->whereNotNull('isbn')
+                          ->where('isbn', '!=', '')
+                          ->where('isbn', 'not like', '938525%');
+                    });
+                } elseif ($isbnType === 'without_isbn') {
+                    // ISBNコードなし：カスタムJANコード（938525で始まる）または空
+                    // JANコード情報も一緒に取得
+                    $query->with('janCode');
+                    $query->where(function($q) {
+                        $q->whereNull('isbn')
+                          ->orWhere('isbn', '=', '')
+                          ->orWhere('isbn', 'like', '938525%');
+                    });
+                }
+                Log::info('PDF ISBN Filter Applied', ['filter' => $isbnType]);
+            }
+
             // 受入年月日の早い順（古い順）でソート
             $books = $query->orderBy('acceptance_date', 'asc')->get();
             
@@ -608,6 +683,11 @@ class BookController extends Controller
 
             // データ行
             $this->addTableData($pdf, $books, $fontname);
+
+            // ISBNコードなしでフィルタした場合、バーコードも出力
+            if ($request->filled('isbn_type') && $request->isbn_type === 'without_isbn') {
+                $this->addBarcodesSection($pdf, $books, $fontname);
+            }
 
             // PDFの出力
             $filename = '書籍一覧_' . date('Ymd_His') . '.pdf';
@@ -1045,5 +1125,175 @@ class BookController extends Controller
         // 代わりに改行処理で対応する
         
         return $text;
+    }
+
+    /**
+     * JANコードで書籍情報を検索
+     */
+    public function searchByJanCode(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $request->validate([
+            'jan_code' => 'required|string|size:13'
+        ]);
+
+        $janCode = $request->jan_code;
+
+        try {
+            // JANコードで登録された書籍を検索
+            $janCodeRecord = \App\Models\JanCode::where('jan_code', $janCode)
+                ->where('is_used', true)
+                ->with('book')
+                ->first();
+
+            if ($janCodeRecord && $janCodeRecord->book) {
+                return response()->json([
+                    'success' => true,
+                    'data' => new BookResource($janCodeRecord->book),
+                    'source' => 'jan_database'
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => 'JANコード ' . $janCode . ' に対応する書籍が見つかりませんでした。'
+            ], 404);
+
+        } catch (\Exception $e) {
+            Log::error('JANコード検索エラー: ' . $e->getMessage());
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'JANコード検索中にエラーが発生しました。'
+            ], 500);
+        }
+    }
+
+    /**
+     * ISBNコードのない書籍のバーコードセクションを追加
+     */
+    private function addBarcodesSection($pdf, $books, $fontname)
+    {
+        // JANコードを持つ書籍のみをフィルタ
+        $booksWithJanCode = $books->filter(function ($book) {
+            return $book->janCode && !empty($book->janCode->jan_code);
+        });
+
+        if ($booksWithJanCode->count() === 0) {
+            return;
+        }
+
+        // 新しいページを開始
+        $pdf->AddPage();
+
+        // バーコードセクションのタイトル
+        $this->setFontSize($pdf, $fontname, 'B', 16);
+        $pdf->Cell(0, 10, 'JANコード バーコード一覧', 0, 1, 'C');
+        $pdf->Ln(10);
+
+        $currentY = $pdf->GetY();
+        $pageHeight = 180; // A4横向きの場合の有効高さ
+        $barcodeHeight = 70; // 1つのバーコードに必要な高さ
+        $barcodesPerRow = 3; // 1行に表示するバーコード数
+        $barcodeWidth = 90; // 1つのバーコードの幅
+        $startX = 10; // 左マージン
+
+        $count = 0;
+        foreach ($booksWithJanCode as $book) {
+            $janCode = $book->janCode->jan_code;
+            
+            // 改ページ判定
+            if ($currentY + $barcodeHeight > $pageHeight) {
+                $pdf->AddPage();
+                $currentY = $pdf->GetY();
+                $count = 0;
+            }
+
+            // バーコードの位置計算
+            $colIndex = $count % $barcodesPerRow;
+            $x = $startX + ($colIndex * $barcodeWidth);
+            
+            if ($colIndex === 0) {
+                $y = $currentY;
+            } else {
+                $y = $currentY;
+            }
+
+            // バーコード描画
+            $this->drawSingleBarcode($pdf, $x, $y, $janCode, $book, $fontname);
+
+            $count++;
+            
+            // 行が完了したら次の行へ移動
+            if ($colIndex === $barcodesPerRow - 1) {
+                $currentY += $barcodeHeight;
+            }
+        }
+    }
+
+    /**
+     * 個別のバーコードを描画
+     */
+    private function drawSingleBarcode($pdf, $x, $y, $janCode, $book, $fontname)
+    {
+        // 現在位置を保存
+        $originalX = $pdf->GetX();
+        $originalY = $pdf->GetY();
+
+        // 指定位置に移動
+        $pdf->SetXY($x, $y);
+
+        // 書籍タイトル（短縮版）
+        $this->setFontSize($pdf, $fontname, 'B', 9);
+        $title = $this->truncateText($book->title, 30);
+        $pdf->Cell(80, 6, $title, 0, 1, 'C');
+        
+        // 著者（存在する場合）
+        if ($book->author) {
+            $pdf->SetX($x);
+            $this->setFontSize($pdf, $fontname, '', 8);
+            $author = $this->truncateText($book->author, 25);
+            $pdf->Cell(80, 5, $author, 0, 1, 'C');
+        }
+
+        // JANコード表示
+        $pdf->SetX($x);
+        $pdf->SetFont('helvetica', 'B', 9);
+        $pdf->Cell(80, 6, 'JAN: ' . $janCode, 0, 1, 'C');
+
+        // バーコード描画
+        $barcodeY = $pdf->GetY();
+        $style = array(
+            'position' => '',
+            'align' => 'C',
+            'stretch' => false,
+            'fitwidth' => true,
+            'cellfitscale' => false,
+            'border' => false,
+            'hpadding' => 'auto',
+            'vpadding' => 'auto',
+            'fgcolor' => array(0, 0, 0),
+            'bgcolor' => false,
+            'text' => true,
+            'font' => 'helvetica',
+            'fontsize' => 7,
+            'stretchtext' => 2
+        );
+
+        // EAN-13バーコードを描画
+        $pdf->write1DBarcode($janCode, 'EAN13', $x + 5, $barcodeY, 70, 25, 0.4, $style, 'N');
+
+        // 元の位置に戻す
+        $pdf->SetXY($originalX, $originalY);
+    }
+
+    /**
+     * テキストを指定文字数で切り詰める
+     */
+    private function truncateText($text, $maxLength)
+    {
+        if (mb_strlen($text) <= $maxLength) {
+            return $text;
+        }
+        return mb_substr($text, 0, $maxLength - 2) . '..';
     }
 }

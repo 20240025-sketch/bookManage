@@ -84,7 +84,8 @@ const form = reactive({
   acceptance_date: '',
   acceptance_type: '',
   acceptance_source: '',
-  discard: ''
+  discard: '',
+  storage_location: ''
 });
 
 const originalForm = ref({});

@@ -27,6 +27,14 @@ class Book extends Model
         return $this->hasOne(Borrow::class)->whereNull('returned_date');
     }
 
+    /**
+     * Get the JAN code for this book (for books registered without ISBN).
+     */
+    public function janCode(): HasOne
+    {
+        return $this->hasOne(JanCode::class);
+    }
+
     protected $fillable = [
         'title',
         'title_transcription',
@@ -42,6 +50,7 @@ class Book extends Model
         'acceptance_type',
         'acceptance_source',
         'discard',
+        'storage_location',
     ];
 
     protected $casts = [
