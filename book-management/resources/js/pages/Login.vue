@@ -151,6 +151,18 @@ export default {
           // ログイン成功
           console.log('ログイン成功:', response.data.student)
           localStorage.setItem('student', JSON.stringify(response.data.student))
+          
+          // 権限情報を保存
+          if (response.data.permissions) {
+            console.log('権限情報を保存:', response.data.permissions)
+            localStorage.setItem('userPermissions', JSON.stringify(response.data.permissions))
+            
+            // グローバル権限更新関数が利用可能な場合は呼び出し
+            if (window.updateUserPermissions) {
+              window.updateUserPermissions(response.data.permissions)
+            }
+          }
+          
           console.log('localStorage設定完了')
           
           // 強制的にページをリロードして書籍一覧に遷移

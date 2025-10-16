@@ -28,7 +28,9 @@
         >
           📝 リクエスト申請
         </button>
+        <!-- 管理者のみ履歴タブを表示 -->
         <button
+          v-if="userPermissions.canViewBookRequestHistory"
           @click="switchTab('history')"
           :class="{
             'border-blue-500 text-blue-600 bg-blue-50': activeTab === 'history',
@@ -90,14 +92,15 @@
       </form>
     </div>
 
-    <!-- リクエスト履歴タブ -->
-    <!-- リクエスト履歴タブ -->
+    <!-- リクエスト履歴タブ (管理者のみ) -->
     <div v-show="activeTab === 'history'" class="bg-white shadow overflow-hidden sm:rounded-lg">
-      <div class="px-4 py-3 border-b border-gray-200">
-        <h2 class="text-lg font-medium text-gray-900">リクエスト履歴</h2>
-        <p class="mt-1 text-sm text-gray-600">過去のリクエストと現在の状況を確認できます</p>
-      </div>
-      <ul class="divide-y divide-gray-200">
+      <!-- 管理者の場合は履歴を表示 -->
+      <div v-if="userPermissions.canViewBookRequestHistory">
+        <div class="px-4 py-3 border-b border-gray-200">
+          <h2 class="text-lg font-medium text-gray-900">リクエスト履歴</h2>
+          <p class="mt-1 text-sm text-gray-600">過去のリクエストと現在の状況を確認できます</p>
+        </div>
+        <ul class="divide-y divide-gray-200">
         <li v-if="requests.length === 0" class="px-4 py-8 text-center text-gray-500">
           まだリクエストがありません
         </li>
@@ -126,8 +129,8 @@
                 {{ getStatusText(request.status) }}
               </span>
               
-              <!-- アクションボタン -->
-              <div class="flex gap-2" v-if="request.status === 'pending'">
+              <!-- アクションボタン (管理者のみ) -->
+              <div v-if="userPermissions.isAdmin && request.status === 'pending'" class="flex gap-2">
                 <button
                   @click="approveRequest(request)"
                   class="px-3 py-1 text-xs font-medium text-white bg-green-600 rounded-md hover:bg-green-700 transition-colors"
@@ -144,8 +147,9 @@
                 </button>
               </div>
               
-              <!-- 削除ボタン -->
+              <!-- 削除ボタン (管理者のみ) -->
               <button
+                v-if="userPermissions.isAdmin"
                 @click="deleteRequest(request)"
                 class="px-3 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
                 title="削除"
@@ -155,7 +159,19 @@
             </div>
           </div>
         </li>
-      </ul>
+        </ul>
+      </div>
+      
+      <!-- 利用者の場合はアクセス制限メッセージを表示 -->
+      <div v-else class="px-4 py-8 text-center">
+        <div class="text-gray-500">
+          <svg class="mx-auto h-12 w-12 text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+          </svg>
+          <h3 class="text-lg font-medium text-gray-900 mb-2">履歴の閲覧は制限されています</h3>
+          <p class="text-sm text-gray-600">リクエスト履歴の確認は管理者のみ利用可能です。</p>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -167,12 +183,30 @@ import axios from 'axios';
 const requests = ref([]);
 const activeTab = ref('request'); // デフォルトでリクエスト申請タブを表示
 
+// 権限管理
+const userPermissions = ref({
+  canViewBookRequestHistory: false,
+  isAdmin: false
+});
+
 // 新規リクエスト用のフォームデータ
 const newRequest = ref({
   title: '',
   author: '',
   requester_name: '',
 });
+
+// 権限情報をローカルストレージから読み込み
+const loadPermissions = () => {
+  try {
+    const stored = localStorage.getItem('userPermissions');
+    if (stored) {
+      userPermissions.value = { ...userPermissions.value, ...JSON.parse(stored) };
+    }
+  } catch (error) {
+    console.error('権限情報の読み込みに失敗:', error);
+  }
+};
 
 // タブ切り替え関数
 const switchTab = (tab) => {
@@ -209,8 +243,10 @@ const submitRequest = async () => {
         author: '',
         requester_name: '',
       };
-      // 履歴タブに自動切り替え
-      activeTab.value = 'history';
+      // 管理者の場合のみ履歴タブに自動切り替え
+      if (userPermissions.value.canViewBookRequestHistory) {
+        activeTab.value = 'history';
+      }
     } else {
       alert('リクエストの登録に失敗しました');
     }
@@ -303,6 +339,10 @@ const formatDate = (date) => {
 
 // コンポーネントがマウントされたときにリクエスト一覧を読み込む
 onMounted(async () => {
-  await loadRequests();
+  loadPermissions();
+  // 管理者のみ履歴を読み込む
+  if (userPermissions.value.canViewBookRequestHistory) {
+    await loadRequests();
+  }
 });
 </script>

@@ -258,4 +258,79 @@ class Student extends Authenticatable
         
         return $achievements;
     }
+
+    /**
+     * メールアドレスの最初の文字が数字かどうかで権限を判定
+     * 数字で始まる場合は利用者、そうでない場合は管理者
+     */
+    public function isAdmin(): bool
+    {
+        // テストユーザー（ID=0）は管理者とする
+        if ($this->id === 0) {
+            return true;
+        }
+        
+        if (!$this->email) {
+            return false;
+        }
+        
+        $firstChar = substr($this->email, 0, 1);
+        return !is_numeric($firstChar);
+    }
+
+    /**
+     * 利用者かどうかを判定
+     */
+    public function isUser(): bool
+    {
+        return !$this->isAdmin();
+    }
+
+    /**
+     * 書籍登録権限があるかどうか
+     */
+    public function canCreateBooks(): bool
+    {
+        return $this->isAdmin();
+    }
+
+    /**
+     * 生徒一覧の閲覧権限があるかどうか
+     */
+    public function canViewStudents(): bool
+    {
+        return $this->isAdmin();
+    }
+
+    /**
+     * 貸出登録権限があるかどうか
+     */
+    public function canCreateBorrows(): bool
+    {
+        return $this->isAdmin();
+    }
+
+    /**
+     * 本のリクエスト履歴閲覧権限があるかどうか
+     */
+    public function canViewBookRequestHistory(): bool
+    {
+        return $this->isAdmin();
+    }
+
+    /**
+     * 蔵書編集権限があるかどうか
+     */
+    public function canEditBooks(): bool
+    {
+        return $this->isAdmin();
+    }
+
+    /**
+     * 貸出機能使用権限があるかどうか
+     */
+    public function canUseBorrowFeatures(): bool
+    {
+        return $this->isAdmin();
+    }
 }

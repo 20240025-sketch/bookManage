@@ -7,6 +7,7 @@ use App\Models\Student;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 use Illuminate\Support\Facades\Validator;
 
@@ -33,10 +34,27 @@ class AuthController extends Controller
         $student = Student::where('email', $request->email)->first();
 
         if (!$student) {
-            return response()->json([
-                'success' => false,
-                'message' => 'このメールアドレスは登録されていません。'
-            ], 401);
+            // メールアドレスが数字で始まらない場合（管理者）は自動的にアカウントを作成
+            if (!is_numeric(substr($request->email, 0, 1))) {
+                // 管理者用の新規アカウントを作成
+                $student = new Student();
+                $student->email = $request->email;
+                $student->name = explode('@', $request->email)[0]; // メールアドレスの@前を名前として使用
+                $student->student_number = 'ADMIN-' . time(); // 一時的な学籍番号
+                $student->password = Hash::make($request->password);
+                $student->save();
+                
+                Log::info('Auto-created admin account', [
+                    'email' => $request->email,
+                    'student_id' => $student->id
+                ]);
+            } else {
+                // 利用者の場合は登録されていないエラーを返す
+                return response()->json([
+                    'success' => false,
+                    'message' => 'このメールアドレスは登録されていません。'
+                ], 401);
+            }
         }
 
         if (!$student->password) {
@@ -56,6 +74,14 @@ class AuthController extends Controller
 
         // セッションベース認証
         Auth::login($student);
+        
+        // デバッグ: ログイン後の状態確認
+        Log::info('Auth login - Student logged in', [
+            'student_id' => $student->id,
+            'session_id' => session()->getId(),
+            'auth_check' => Auth::check(),
+            'auth_user' => Auth::user() ? Auth::user()->id : null
+        ]);
 
         return response()->json([
             'success' => true,
@@ -67,6 +93,15 @@ class AuthController extends Controller
                 'student_number' => $student->student_number,
                 'grade' => $student->grade,
                 'class' => $student->class
+            ],
+            'permissions' => [
+                'isAdmin' => $student->isAdmin(),
+                'canCreateBooks' => $student->canCreateBooks(),
+                'canViewStudents' => $student->canViewStudents(),
+                'canCreateBorrows' => $student->canCreateBorrows(),
+                'canViewBookRequestHistory' => $student->canViewBookRequestHistory(),
+                'canEditBooks' => $student->canEditBooks(),
+                'canUseBorrowFeatures' => $student->canUseBorrowFeatures()
             ]
         ]);
     }
@@ -105,10 +140,32 @@ class AuthController extends Controller
         $student = Student::where('email', $request->email)->first();
 
         if (!$student) {
-            return response()->json([
-                'success' => false,
-                'message' => 'このメールアドレスは登録されていません。'
-            ], 404);
+            // メールアドレスが数字で始まらない場合（管理者）は自動的にアカウントを作成
+            if (!is_numeric(substr($request->email, 0, 1))) {
+                // 管理者用の新規アカウントを作成
+                $student = new Student();
+                $student->email = $request->email;
+                $student->name = explode('@', $request->email)[0]; // メールアドレスの@前を名前として使用
+                $student->student_number = 'ADMIN-' . time(); // 一時的な学籍番号
+                $student->password = Hash::make($request->password);
+                $student->save();
+                
+                Log::info('Auto-created admin account via password setup', [
+                    'email' => $request->email,
+                    'student_id' => $student->id
+                ]);
+                
+                return response()->json([
+                    'success' => true,
+                    'message' => 'アカウントを作成し、パスワードを設定しました。ログインしてください。'
+                ]);
+            } else {
+                // 利用者の場合は登録されていないエラーを返す
+                return response()->json([
+                    'success' => false,
+                    'message' => 'このメールアドレスは登録されていません。'
+                ], 404);
+            }
         }
 
         if ($student->password) {

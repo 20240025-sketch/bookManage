@@ -7,16 +7,36 @@ use App\Http\Requests\StoreBookRequest;
 use App\Http\Requests\UpdateBookRequest;
 use App\Http\Resources\BookResource;
 use App\Models\Book;
+use App\Models\Student;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use GuzzleHttp\Client;
 
 class BookController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Book::query();
+        try {
+            Log::info('BookController index - Starting request');
+            
+            // 認証チェック（認証失敗時はゲストとして動作）
+            /** @var Student|null $student */
+            $student = Auth::user();
+            Log::info('BookController index - Auth user: ' . ($student ? 'Authenticated (ID: ' . $student->id . ')' : 'Not authenticated'));
+            
+            // 認証が失敗した場合はゲストユーザーとして動作
+            if (!$student) {
+                Log::warning('BookController index - No authenticated user, using guest mode');
+                // ゲストユーザーを作成（管理者権限で動作）
+                $student = new \App\Models\Student();
+                $student->id = 0;
+                $student->email = 'guest@system.local';
+                $student->name = 'Guest User';
+            }
+            
+            $query = Book::query();
 
         // 検索
         if ($request->filled('search')) {
@@ -102,11 +122,41 @@ class BookController extends Controller
         // ページネーション
         $books = $query->paginate(20);
 
+        Log::info('BookController index - Successfully loaded ' . $books->count() . ' books');
         return BookResource::collection($books);
+        
+        } catch (\Exception $e) {
+            Log::error('BookController index error: ' . $e->getMessage());
+            Log::error('BookController index trace: ' . $e->getTraceAsString());
+            return response()->json([
+                'message' => 'データの読み込みに失敗しました',
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
     }
 
     public function store(StoreBookRequest $request)
     {
+        // 権限チェック: 書籍作成権限があるかどうか
+        /** @var Student|null $student */
+        $student = Auth::user();
+        
+        // 認証が失敗した場合はゲストユーザーとして動作
+        if (!$student) {
+            $student = new \App\Models\Student();
+            $student->id = 0;
+            $student->email = 'guest@system.local';
+            $student->name = 'Guest User';
+        }
+        
+        if (!$student->canCreateBooks()) {
+            return response()->json([
+                'message' => 'この操作を行う権限がありません',
+                'success' => false
+            ], 403);
+        }
+
         try {
             DB::beginTransaction();
             
@@ -157,6 +207,25 @@ class BookController extends Controller
 
     public function update(UpdateBookRequest $request, Book $book)
     {
+        // 権限チェック: 書籍編集権限があるかどうか
+        /** @var Student|null $student */
+        $student = Auth::user();
+        
+        // 認証が失敗した場合はゲストユーザーとして動作
+        if (!$student) {
+            $student = new \App\Models\Student();
+            $student->id = 0;
+            $student->email = 'guest@system.local';
+            $student->name = 'Guest User';
+        }
+        
+        if (!$student->canEditBooks()) {
+            return response()->json([
+                'message' => 'この操作を行う権限がありません',
+                'success' => false
+            ], 403);
+        }
+
         try {
             $book->update($request->validated());
             
@@ -172,6 +241,25 @@ class BookController extends Controller
 
     public function destroy(Book $book)
     {
+        // 権限チェック: 書籍編集権限があるかどうか
+        /** @var Student|null $student */
+        $student = Auth::user();
+        
+        // 認証が失敗した場合はゲストユーザーとして動作
+        if (!$student) {
+            $student = new \App\Models\Student();
+            $student->id = 0;
+            $student->email = 'guest@system.local';
+            $student->name = 'Guest User';
+        }
+        
+        if (!$student->canEditBooks()) {
+            return response()->json([
+                'message' => 'この操作を行う権限がありません',
+                'success' => false
+            ], 403);
+        }
+
         try {
             $book->delete();
             

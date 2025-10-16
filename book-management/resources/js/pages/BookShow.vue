@@ -30,13 +30,16 @@
             <p v-if="book.title_transcription" class="mt-1 text-lg text-gray-600">{{ book.title_transcription }}</p>
           </div>
           <div class="flex items-center space-x-3">
+            <!-- 管理者のみ編集・削除ボタンを表示 -->
             <router-link
+              v-if="userPermissions.canEditBooks"
               :to="`/books/${book.id}/edit`"
               class="bg-indigo-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-md"
             >
               編集
             </router-link>
             <button
+              v-if="userPermissions.canEditBooks"
               @click="deleteBook"
               class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md"
             >
@@ -399,6 +402,24 @@ const historyPagination = ref({
 const historyData = ref([]);
 const historyLoading = ref(false);
 
+// 権限管理
+const userPermissions = ref({
+  canEditBooks: false,
+  canUseBorrowFeatures: false
+});
+
+// 権限情報をローカルストレージから読み込み
+const loadPermissions = () => {
+  try {
+    const stored = localStorage.getItem('userPermissions');
+    if (stored) {
+      userPermissions.value = { ...userPermissions.value, ...JSON.parse(stored) };
+    }
+  } catch (error) {
+    console.error('権限情報の読み込みに失敗:', error);
+  }
+};
+
 // ページネーション付き履歴を読み込む
 const loadHistory = async (page = 1) => {
   try {
@@ -550,6 +571,7 @@ const formatDateTime = (dateString) => {
 // 初期ロードと、ルートパラメータが変更された時にデータを再読み込み
 onMounted(() => {
   loadBook();
+  loadPermissions();
 });
 
 // ウィンドウにフォーカスが戻った時にデータを更新（他のタブで操作された可能性に対応）

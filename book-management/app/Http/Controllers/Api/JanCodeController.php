@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\JanCode;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
@@ -65,7 +66,7 @@ class JanCodeController extends Controller
     /**
      * バーコードPDFを生成
      */
-    public function generateBarcodePdf(Request $request): \Illuminate\Http\Response
+    public function generateBarcodePdf(Request $request): Response|JsonResponse
     {
         $request->validate([
             'jan_code' => 'required|string|size:13'

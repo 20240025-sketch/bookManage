@@ -1,15 +1,16 @@
 <template>
-  <div class="container mx-auto px-4 py-8">
+  <div class="container mx-auto px-4 pb-8">
     <!-- ヘッダー -->
     <div class="mb-6">
       <div class="flex items-center justify-between">
         <div>
-          <h1 class="text-2xl font-bold text-gray-900">生徒一覧</h1>
+          <h1 class="text-2xl font-bold text-gray-900">{{ userPermissions.isAdmin ? '生徒一覧' : '自分の情報' }}</h1>
           <p class="mt-1 text-sm text-gray-600">
-            登録されている生徒の一覧を表示します
+            {{ userPermissions.isAdmin ? '登録されている生徒の一覧を表示します' : '自分の生徒情報を確認できます' }}
           </p>
         </div>
-        <div class="flex items-center space-x-3">
+        <!-- 管理者のみ新規登録ボタンを表示 -->
+        <div v-if="userPermissions.isAdmin" class="flex items-center space-x-3">
           <button
             @click="showCreateModal = true"
             class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md"
@@ -39,7 +40,7 @@
     </div>
 
     <!-- 生徒登録・編集モーダル -->
-    <div v-if="showCreateModal || showEditModal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center">
+    <div v-if="showCreateModal || showEditModal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
       <div class="bg-white rounded-lg p-8 max-w-md w-full">
         <div class="flex justify-between items-center mb-6">
           <h2 class="text-xl font-bold">{{ showEditModal ? '生徒情報編集' : '新規生徒登録' }}</h2>
@@ -128,8 +129,8 @@
       <p class="mt-2 text-gray-600">読み込み中...</p>
     </div>
 
-    <!-- 検索フィルター -->
-    <div class="bg-white rounded-lg shadow p-6 mb-6">
+    <!-- 検索フィルター (管理者のみ) -->
+    <div v-if="userPermissions.isAdmin" class="bg-white rounded-lg shadow p-6 mb-6">
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
           <label for="searchName" class="block text-sm font-medium text-gray-700 mb-1">
@@ -162,6 +163,21 @@
         </div>
         <div>
           <!-- 空のカラム（将来的な拡張用） -->
+        </div>
+      </div>
+    </div>
+
+    <!-- 利用者向けメッセージ -->
+    <div v-if="!userPermissions.isAdmin" class="bg-blue-50 border border-blue-200 rounded-md p-4 mb-6">
+      <div class="flex">
+        <svg class="w-5 h-5 text-blue-400 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+          <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+        </svg>
+        <div class="ml-3">
+          <h3 class="text-sm font-medium text-blue-800">自分の情報</h3>
+          <p class="mt-1 text-sm text-blue-700">
+            以下に表示されるのはあなたの生徒情報です。貸出履歴や現在の貸出状況を確認できます。
+          </p>
         </div>
       </div>
     </div>
@@ -230,7 +246,8 @@
                 </div>
               </div>
             </td>
-            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+            <!-- 管理者のみ編集ボタンを含むすべての操作を表示 -->
+            <td v-if="userPermissions.isAdmin" class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
               <button
                 @click="showBorrowHistory(student)"
                 class="text-indigo-600 hover:text-indigo-900 mr-4"
@@ -242,6 +259,15 @@
                 class="text-blue-600 hover:text-blue-900"
               >
                 編集
+              </button>
+            </td>
+            <!-- 利用者の場合は貸出履歴の閲覧のみ可能（返却・編集操作は不可） -->
+            <td v-else class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+              <button
+                @click="showBorrowHistory(student)"
+                class="text-indigo-600 hover:text-indigo-900"
+              >
+                貸出履歴
               </button>
             </td>
           </tr>
@@ -327,7 +353,7 @@
     </div>
 
     <!-- 生徒登録/編集モーダル -->
-    <div v-if="showCreateModal || showEditModal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center">
+    <div v-if="showCreateModal || showEditModal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
       <div class="bg-white rounded-lg p-8 max-w-lg w-full">
         <h2 class="text-xl font-bold mb-4">
           {{ showEditModal ? '生徒情報の編集' : '新規生徒登録' }}
@@ -439,7 +465,7 @@
     </div>
 
     <!-- 貸出履歴モーダル -->
-    <div v-if="showBorrowModal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center">
+    <div v-if="showBorrowModal" class="fixed inset-0 bg-gray-500 bg-opacity-75 flex items-center justify-center z-50">
       <div class="bg-white rounded-lg p-8 max-w-4xl w-full max-h-[80vh] overflow-y-auto">
         <div class="flex justify-between items-center mb-6">
           <div>
@@ -619,15 +645,15 @@
                 📖 現在借りている本
                 <span class="bg-blue-600 text-white text-sm px-2 py-1 rounded-full">{{ selectedStudent.active_borrows.length }}冊</span>
               </h3>
-              <div class="flex items-center gap-2">
-                <!-- 全選択/全解除ボタン -->
+              <div v-if="userPermissions.isAdmin" class="flex items-center gap-2">
+                <!-- 全選択/全解除ボタン（管理者のみ） -->
                 <button
                   @click="toggleSelectAll"
                   class="text-sm text-blue-600 hover:text-blue-800 px-3 py-1 rounded-md border border-blue-300 hover:bg-blue-100 transition-colors"
                 >
                   {{ selectedBorrows.length === selectedStudent.active_borrows.length ? '全解除' : '全選択' }}
                 </button>
-                <!-- まとめて返却ボタン -->
+                <!-- まとめて返却ボタン（管理者のみ） -->
                 <button
                   v-if="selectedBorrows.length > 0"
                   @click="batchReturnBooks"
@@ -650,8 +676,9 @@
                   ]">
                 <div class="flex items-start justify-between">
                   <div class="flex items-start gap-3 flex-1">
-                    <!-- チェックボックス -->
+                    <!-- チェックボックス（管理者のみ） -->
                     <input 
+                      v-if="userPermissions.isAdmin"
                       type="checkbox" 
                       :value="borrow.id" 
                       v-model="selectedBorrows" 
@@ -702,8 +729,9 @@
                     </div>
                   </div>
                   
-                  <!-- 返却ボタン -->
+                  <!-- 返却ボタン（管理者のみ） -->
                   <button
+                    v-if="userPermissions.isAdmin"
                     @click="() => { console.log('返却ボタンクリック:', borrow); returnBook(borrow); }"
                     :disabled="processingReturn"
                     class="px-3 py-1 text-sm text-white bg-green-600 rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all"
@@ -796,6 +824,24 @@ const pagination = ref({
   from: 0,
   to: 0
 });
+
+// 権限管理
+const userPermissions = ref({
+  isAdmin: false,
+  canViewStudents: false
+});
+
+// 権限情報をローカルストレージから読み込み
+const loadPermissions = () => {
+  try {
+    const stored = localStorage.getItem('userPermissions');
+    if (stored) {
+      userPermissions.value = { ...userPermissions.value, ...JSON.parse(stored) };
+    }
+  } catch (error) {
+    console.error('権限情報の読み込みに失敗:', error);
+  }
+};
 
 const showCreateModal = ref(false);
 const showEditModal = ref(false);
@@ -1015,11 +1061,26 @@ const loadStudents = async (page = 1) => {
   try {
     loading.value = true;
     console.log('Loading students from API...');
+    console.log('Current user permissions:', userPermissions.value);
+    console.log('LocalStorage userPermissions:', localStorage.getItem('userPermissions'));
+    
+    // ローカルストレージから現在ログイン中の生徒情報を取得
+    const currentStudent = JSON.parse(localStorage.getItem('student') || '{}');
+    console.log('Current student from localStorage:', currentStudent);
+    
+    // セッション認証のためのヘッダー設定を確認
+    axios.defaults.withCredentials = true;
     
     const params = {
       page: page,
       per_page: pagination.value.per_page
     };
+    
+    // 利用者の場合は、現在ログイン中の生徒のemailをパラメータとして送信
+    if (!userPermissions.value.isAdmin && currentStudent.email) {
+      params.current_user_email = currentStudent.email;
+      console.log('Non-admin user - sending current_user_email:', currentStudent.email);
+    }
     
     // フィルター条件を追加
     if (filters.value.name) {
@@ -1034,12 +1095,25 @@ const loadStudents = async (page = 1) => {
     
     const response = await axios.get('/api/students', { params });
     console.log('API Response:', response.data);
+    console.log('Number of students returned:', response.data.data.length);
     students.value = response.data.data;
     pagination.value = response.data.pagination;
     console.log('Students loaded:', students.value.length);
   } catch (err) {
-    error.value = '生徒情報の取得に失敗しました';
     console.error('Error loading students:', err);
+    if (err.response) {
+      console.error('Response status:', err.response.status);
+      console.error('Response data:', err.response.data);
+      if (err.response.status === 401) {
+        error.value = '認証エラー: ログインし直してください';
+      } else {
+        error.value = err.response.data.message || '生徒情報の取得に失敗しました';
+      }
+    } else if (err.request) {
+      error.value = 'サーバーに接続できませんでした';
+    } else {
+      error.value = '予期しないエラーが発生しました: ' + err.message;
+    }
   } finally {
     loading.value = false;
   }
@@ -1281,6 +1355,7 @@ const getDaysUntilDue = (dueDate) => {
 
 // コンポーネントのマウント時に生徒一覧を取得
 onMounted(() => {
+  loadPermissions();
   loadStudents();
   loadGradeClasses();
 });

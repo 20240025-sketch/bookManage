@@ -2,6 +2,7 @@
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Auth;
 use App\Http\Controllers\Api\BookController;
 use App\Http\Controllers\BorrowController;
 use App\Http\Controllers\StudentController;
@@ -16,46 +17,97 @@ Route::options('{any}', function () {
         ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
 })->where('any', '.*');
 
-// 個別ルートを先に定義
-Route::post('books/search-isbn', [BookController::class, 'searchByISBN']);
-Route::get('books/search-by-isbn', [BookController::class, 'searchByISBN']);
-Route::get('books/search-by-jan', [BookController::class, 'searchByJanCode']);
-Route::get('books/pdf', [BookController::class, 'exportPdf']);
-Route::get('books/acceptance-sources', [BookController::class, 'getAcceptanceSources']);
 
-// リソースルートを後に定義
-Route::apiResource('books', BookController::class);
-Route::get('books/{book}/history', [BookController::class, 'history']);
 
-// 貸し借り管理のルート
-Route::apiResource('borrows', BorrowController::class);
-Route::post('borrows/batch', [BorrowController::class, 'batchStore']);
-Route::post('borrows/batch-return', [BorrowController::class, 'batchReturn']);
-Route::patch('borrows/{borrow}/return', [BorrowController::class, 'returnBook']);
-Route::get('borrows/recent', [BorrowController::class, 'recent']);
-Route::get('books/available', [BookController::class, 'available']);
 
-// JANコード生成のルート
-Route::post('generate-jan-code', [App\Http\Controllers\Api\JanCodeController::class, 'generateJanCode']);
-Route::post('generate-barcode-pdf', [App\Http\Controllers\Api\JanCodeController::class, 'generateBarcodePdf']);
 
-// 生徒管理のルート
-Route::get('students/classes', [StudentController::class, 'classes']);
-Route::apiResource('students', StudentController::class);
-Route::get('students/{student}/borrows', [StudentController::class, 'getBorrows']);
-
-// 本のリクエスト機能のルート
-Route::get('book-requests', [BookRequestController::class, 'index']);
-Route::post('book-requests', [BookRequestController::class, 'store']);
-Route::patch('book-requests/{bookRequest}/status', [BookRequestController::class, 'updateStatus']);
-Route::delete('book-requests/{bookRequest}', [BookRequestController::class, 'destroy']);
-
-// 認証関連のルート
+// 認証関連のルート（認証不要）
 Route::post('login', [AuthController::class, 'login']);
-Route::post('logout', [AuthController::class, 'logout'])->middleware('auth');
-Route::post('setup-password', [AuthController::class, 'setupPassword']);
-Route::post('change-password', [AuthController::class, 'changePassword'])->middleware('auth');
-Route::get('me', [AuthController::class, 'me'])->middleware('auth');
+
+// テスト用エンドポイント（認証不要）
+Route::get('test/books', function() {
+    $books = \App\Models\Book::limit(5)->get();
+    return response()->json([
+        'success' => true,
+        'books' => $books,
+        'message' => '認証なしでのブック取得テスト'
+    ]);
+});
+
+Route::get('test/students', function() {
+    $students = \App\Models\Student::limit(5)->get();
+    return response()->json([
+        'success' => true,
+        'students' => $students,
+        'message' => '認証なしでの生徒取得テスト'
+    ]);
+});
+
+// デバッグ用エンドポイント
+Route::get('debug/session', function() {
+    return response()->json([
+        'session_id' => session()->getId(),
+        'auth_check' => Auth::check(),
+        'user' => Auth::user() ? [
+            'id' => Auth::user()->id,
+            'name' => Auth::user()->name,
+            'email' => Auth::user()->email
+        ] : null,
+        'session_data' => session()->all()
+    ]);
+})->middleware('web');
+
+// セッション認証が必要なルート
+Route::middleware('web')->group(function () {
+    Route::post('logout', [AuthController::class, 'logout']);
+    Route::post('setup-password', [AuthController::class, 'setupPassword']);
+    Route::post('change-password', [AuthController::class, 'changePassword']);
+    Route::get('me', [AuthController::class, 'me']);
+    
+    // 書籍管理のルート
+    Route::get('books', [BookController::class, 'index']);
+    Route::post('books', [BookController::class, 'store']);
+    Route::get('books/{book}', [BookController::class, 'show']);
+    Route::put('books/{book}', [BookController::class, 'update']);
+    Route::delete('books/{book}', [BookController::class, 'destroy']);
+    Route::get('books/pdf', [BookController::class, 'exportPdf']);
+    Route::get('books/available', [BookController::class, 'available']);
+    Route::get('books/{book}/history', [BookController::class, 'history']);
+    Route::post('books/search-isbn', [BookController::class, 'searchByISBN']);
+    Route::get('books/search-by-isbn', [BookController::class, 'searchByISBN']);
+    Route::get('books/search-by-jan', [BookController::class, 'searchByJanCode']);
+    Route::get('books/acceptance-sources', [BookController::class, 'getAcceptanceSources']);
+    
+    // 生徒管理のルート
+    Route::get('students', [StudentController::class, 'index']);
+    Route::post('students', [StudentController::class, 'store']);
+    Route::get('students/{student}', [StudentController::class, 'show']);
+    Route::put('students/{student}', [StudentController::class, 'update']);
+    Route::delete('students/{student}', [StudentController::class, 'destroy']);
+    Route::get('students/classes', [StudentController::class, 'classes']);
+    Route::get('students/{student}/borrows', [StudentController::class, 'getBorrows']);
+    
+    // 貸し借り管理のルート
+    Route::get('borrows', [BorrowController::class, 'index']);
+    Route::post('borrows', [BorrowController::class, 'store']);
+    Route::get('borrows/{borrow}', [BorrowController::class, 'show']);
+    Route::put('borrows/{borrow}', [BorrowController::class, 'update']);
+    Route::delete('borrows/{borrow}', [BorrowController::class, 'destroy']);
+    Route::post('borrows/batch', [BorrowController::class, 'batchStore']);
+    Route::post('borrows/batch-return', [BorrowController::class, 'batchReturn']);
+    Route::patch('borrows/{borrow}/return', [BorrowController::class, 'returnBook']);
+    Route::get('borrows/recent', [BorrowController::class, 'recent']);
+    
+    // 本のリクエスト機能のルート
+    Route::get('book-requests', [BookRequestController::class, 'index']);
+    Route::post('book-requests', [BookRequestController::class, 'store']);
+    Route::patch('book-requests/{bookRequest}/status', [BookRequestController::class, 'updateStatus']);
+    Route::delete('book-requests/{bookRequest}', [BookRequestController::class, 'destroy']);
+    
+    // JANコード生成のルート
+    Route::post('generate-jan-code', [App\Http\Controllers\Api\JanCodeController::class, 'generateJanCode']);
+    Route::post('generate-barcode-pdf', [App\Http\Controllers\Api\JanCodeController::class, 'generateBarcodePdf']);
+});
 
 // テスト用エンドポイント
 Route::get('test-ndl/{isbn}', function($isbn) {
@@ -86,6 +138,11 @@ Route::get('test-ndl/{isbn}', function($isbn) {
     }
 });
 
+// セッション認証チェック用のミドルウェア
 Route::get('/user', function (Request $request) {
-    return $request->user();
-})->middleware('auth:sanctum');
+    $student = session('student');
+    if (!$student) {
+        return response()->json(['error' => 'Unauthorized'], 401);
+    }
+    return response()->json($student);
+});

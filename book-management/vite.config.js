@@ -25,9 +25,24 @@ export default defineConfig({
     server: {
         proxy: {
             '/api': {
-                target: 'http://127.0.0.1:8086',
+                target: 'http://127.0.0.1:8003',
                 changeOrigin: true,
-                secure: false
+                secure: false,
+                configure: (proxy, options) => {
+                    proxy.on('proxyReq', (proxyReq, req, res) => {
+                        // Cookie ヘッダーを転送
+                        if (req.headers.cookie) {
+                            proxyReq.setHeader('Cookie', req.headers.cookie);
+                        }
+                    });
+                    
+                    proxy.on('proxyRes', (proxyRes, req, res) => {
+                        // Set-Cookie ヘッダーを転送
+                        if (proxyRes.headers['set-cookie']) {
+                            res.setHeader('Set-Cookie', proxyRes.headers['set-cookie']);
+                        }
+                    });
+                }
             }
         }
     }

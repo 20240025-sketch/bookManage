@@ -130,11 +130,15 @@
         <div class="flex items-center justify-between">
           <div>
             <h1 class="text-2xl font-bold text-gray-900">蔵書一覧</h1>
-            <p class="mt-1 text-sm text-gray-600">
+            <p v-if="userPermissions.isAdmin" class="mt-1 text-sm text-gray-600">
               登録されている書籍の一覧を表示します
             </p>
+            <p v-else class="mt-1 text-sm text-gray-600">
+              図書室の蔵書を検索・閲覧できます
+            </p>
           </div>
-          <div class="flex items-center space-x-3">
+          <!-- 管理者のみボタンを表示 -->
+          <div v-if="userPermissions.isAdmin" class="flex items-center space-x-3">
             <button
               @click="exportPdf"
               :disabled="pdfExporting"
@@ -284,7 +288,9 @@
                     <span class="font-medium">冊数:</span>
                     <span v-if="!editingQuantity[book.id]" class="inline-flex items-center gap-2">
                       {{ book.quantity || 1 }}冊
+                      <!-- 管理者のみ冊数編集ボタンを表示 -->
                       <button
+                        v-if="userPermissions.isAdmin"
                         @click="startEditQuantity(book)"
                         class="text-blue-500 hover:text-blue-700 text-xs"
                         title="冊数を編集"
@@ -292,7 +298,8 @@
                         ✏️
                       </button>
                     </span>
-                    <div v-else class="inline-flex items-center gap-2">
+                    <!-- 管理者のみ冊数編集フォームを表示 -->
+                    <div v-else-if="userPermissions.isAdmin" class="inline-flex items-center gap-2">
                       <input
                         v-model.number="tempQuantity[book.id]"
                         type="number"
@@ -347,7 +354,8 @@
               </div>
             </div>
 
-            <div class="flex items-center space-x-2 ml-4">
+            <!-- 管理者のみ操作ボタンを表示 -->
+            <div v-if="userPermissions.isAdmin" class="flex items-center space-x-2 ml-4">
               <router-link
                 :to="`/books/${book.id}`"
                 class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm"
@@ -413,6 +421,26 @@ const error = ref('');
 const editingQuantity = ref({});
 const tempQuantity = ref({});
 
+// 権限管理
+const userPermissions = ref({
+  canCreateBooks: false,
+  canEditBooks: false,
+  canUseBorrowFeatures: false,
+  isAdmin: false
+});
+
+// 権限情報をローカルストレージから読み込み
+const loadPermissions = () => {
+  try {
+    const stored = localStorage.getItem('userPermissions');
+    if (stored) {
+      userPermissions.value = { ...userPermissions.value, ...JSON.parse(stored) };
+    }
+  } catch (error) {
+    console.error('権限情報の読み込みに失敗:', error);
+  }
+};
+
 const filters = reactive({
   searchTitle: '',
   searchAuthor: '',
@@ -429,6 +457,9 @@ const loadBooks = async () => {
   error.value = '';
   
   try {
+    // セッション認証のためのヘッダー設定を確認
+    axios.defaults.withCredentials = true;
+    console.log('BookIndex loadBooks - Starting API request');
     const params = {};
     if (filters.startDate) params.start_date = filters.startDate;
     if (filters.endDate) params.end_date = filters.endDate;
@@ -439,7 +470,16 @@ const loadBooks = async () => {
     const response = await axios.get('/api/books', { params });
     books.value = response.data.data || response.data;
   } catch (err) {
-    error.value = err.response?.data?.message || 'データの読み込みに失敗しました';
+    console.error('BookIndex loadBooks error:', err);
+    if (err.response) {
+      console.error('Response status:', err.response.status);
+      console.error('Response data:', err.response.data);
+      error.value = err.response.data?.message || 'データの読み込みに失敗しました';
+    } else if (err.request) {
+      error.value = 'サーバーに接続できませんでした';
+    } else {
+      error.value = '予期しないエラーが発生しました: ' + err.message;
+    }
   } finally {
     loading.value = false;
   }
@@ -614,6 +654,7 @@ const saveQuantity = async (book) => {
 };
 
 onMounted(() => {
+  loadPermissions();
   loadBooks();
 });
 

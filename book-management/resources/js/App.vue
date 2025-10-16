@@ -36,8 +36,9 @@
               <span class="text-xs text-gray-500 text-center">本を探す・確認</span>
             </router-link>
             
-            <!-- 書籍登録 -->
+            <!-- 書籍登録 (管理者のみ) -->
             <router-link 
+              v-if="userPermissions.canCreateBooks"
               to="/books/create" 
               class="flex flex-col items-center px-4 py-3 min-w-0 flex-shrink-0 text-gray-700 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all duration-200"
               :class="{ 'text-green-600 bg-green-50 border-b-2 border-green-600': $route.path === '/books/create' }"
@@ -49,7 +50,7 @@
               <span class="text-xs text-gray-500 text-center">新しい本を追加</span>
             </router-link>
             
-            <!-- 生徒一覧 -->
+            <!-- 生徒一覧 (全ユーザー利用可能) -->
             <router-link 
               to="/students" 
               class="flex flex-col items-center px-4 py-3 min-w-0 flex-shrink-0 text-gray-700 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all duration-200"
@@ -58,12 +59,13 @@
               <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path>
               </svg>
-              <span class="text-xs font-medium text-center">生徒一覧</span>
-              <span class="text-xs text-gray-500 text-center">生徒情報管理</span>
+              <span class="text-xs font-medium text-center">{{ userPermissions.isAdmin ? '生徒一覧' : '自分の情報' }}</span>
+              <span class="text-xs text-gray-500 text-center">{{ userPermissions.isAdmin ? '生徒情報管理' : '個人情報確認' }}</span>
             </router-link>
             
-            <!-- 貸出登録 -->
+            <!-- 貸出登録 (管理者のみ) -->
             <router-link 
+              v-if="userPermissions.canCreateBorrows"
               to="/borrows/create" 
               class="flex flex-col items-center px-4 py-3 min-w-0 flex-shrink-0 text-gray-700 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all duration-200"
               :class="{ 'text-orange-600 bg-orange-50 border-b-2 border-orange-600': $route.path === '/borrows/create' }"
@@ -75,7 +77,7 @@
               <span class="text-xs text-gray-500 text-center">本を貸し出す</span>
             </router-link>
             
-            <!-- 本のリクエスト -->
+            <!-- 本のリクエスト (全ユーザー利用可能) -->
             <router-link 
               to="/book-requests" 
               class="flex flex-col items-center px-4 py-3 min-w-0 flex-shrink-0 text-gray-700 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all duration-200"
@@ -113,6 +115,17 @@ import AppHeader from './components/layouts/AppHeader.vue'
 const route = useRoute()
 const isNavigationVisible = ref(true)
 
+// 権限管理
+const userPermissions = ref({
+  isAdmin: false,
+  canCreateBooks: false,
+  canViewStudents: false,
+  canCreateBorrows: false,
+  canViewBookRequestHistory: false,
+  canEditBooks: false,
+  canUseBorrowFeatures: false
+})
+
 // 認証が必要なルートかどうかを判定
 const isAuthenticatedRoute = computed(() => {
   const authRoutes = ['/books', '/students', '/borrows', '/book-requests', '/password-change']
@@ -126,12 +139,36 @@ const toggleNavigation = () => {
   localStorage.setItem('navigationVisible', isNavigationVisible.value.toString())
 }
 
+// 権限情報をローカルストレージから読み込み
+const loadPermissions = () => {
+  try {
+    const stored = localStorage.getItem('userPermissions')
+    if (stored) {
+      userPermissions.value = { ...userPermissions.value, ...JSON.parse(stored) }
+    }
+  } catch (error) {
+    console.error('権限情報の読み込みに失敗:', error)
+  }
+}
+
+// 権限情報を保存
+const savePermissions = (permissions) => {
+  userPermissions.value = { ...userPermissions.value, ...permissions }
+  localStorage.setItem('userPermissions', JSON.stringify(userPermissions.value))
+}
+
+// グローバルに権限情報を提供
+window.updateUserPermissions = savePermissions
+
 // ページ読み込み時にナビゲーションの表示状態を復元
 onMounted(() => {
   const saved = localStorage.getItem('navigationVisible')
   if (saved !== null) {
     isNavigationVisible.value = saved === 'true'
   }
+  
+  // 権限情報を読み込み
+  loadPermissions()
 })
 
 console.log('App.vue loaded successfully')

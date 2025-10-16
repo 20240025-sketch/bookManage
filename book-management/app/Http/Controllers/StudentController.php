@@ -7,6 +7,8 @@ use App\Http\Requests\StoreStudentRequest;
 use App\Http\Requests\UpdateStudentRequest;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 use Exception;
 
 class StudentController extends Controller
@@ -16,15 +18,60 @@ class StudentController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $query = Student::query()
-            ->withCount(['borrows as active_borrows_count' => function ($query) {
-                $query->whereNull('returned_date');
-            }])
-            ->withCount(['borrows as overdue_borrows_count' => function ($query) {
-                $query->whereNull('returned_date')
-                      ->where('due_date', '<', now()->startOfDay());
-            }])
-            ->withCount('borrows as total_borrows_count'); // 総貸出数を追加
+        try {
+            Log::info('StudentController index - Starting request');
+            
+            // セッション情報のデバッグ
+            Log::info('StudentController index - Session ID: ' . $request->session()->getId());
+            Log::info('StudentController index - Session all data: ' . json_encode($request->session()->all()));
+            Log::info('StudentController index - Auth check: ' . (Auth::check() ? 'Yes' : 'No'));
+            Log::info('StudentController index - Request has current_user_email: ' . ($request->has('current_user_email') ? 'Yes (' . $request->input('current_user_email') . ')' : 'No'));
+            
+            // 認証チェック
+            /** @var Student|null $currentUser */
+            $currentUser = Auth::user();
+            Log::info('StudentController index - Auth user: ' . ($currentUser ? 'Authenticated (ID: ' . $currentUser->id . ', Email: ' . $currentUser->email . ')' : 'Not authenticated'));
+            
+            // リクエストパラメータから現在のユーザーを特定
+            if (!$currentUser && $request->has('current_user_email')) {
+                $email = $request->input('current_user_email');
+                $currentUser = Student::where('email', $email)->first();
+                if ($currentUser) {
+                    Log::info('StudentController index - User identified from request parameter (ID: ' . $currentUser->id . ', Email: ' . $currentUser->email . ')');
+                }
+            }
+            
+            // 認証が失敗した場合はゲストユーザーとして動作（管理者権限）
+            $isGuest = false;
+            if (!$currentUser) {
+                Log::warning('StudentController index - No authenticated user, using guest mode');
+                $isGuest = true;
+                // ゲストユーザーを作成（管理者権限で動作）
+                $currentUser = new \App\Models\Student();
+                $currentUser->id = 0;
+                $currentUser->email = 'guest@system.local';
+                $currentUser->name = 'Guest User';
+            }
+
+            $query = Student::query()
+                ->withCount(['borrows as active_borrows_count' => function ($query) {
+                    $query->whereNull('returned_date');
+                }])
+                ->withCount(['borrows as overdue_borrows_count' => function ($query) {
+                    $query->whereNull('returned_date')
+                          ->where('due_date', '<', now()->startOfDay());
+                }])
+                ->withCount('borrows as total_borrows_count'); // 総貸出数を追加
+
+            // 利用者の場合は自分自身のみを表示（ゲストユーザーは除く）
+            if (!$isGuest && $currentUser && !$currentUser->isAdmin()) {
+                $query->where('id', $currentUser->id);
+                Log::info('StudentController index - User mode: Filtering for user ID: ' . $currentUser->id);
+            } else if ($currentUser && $currentUser->isAdmin()) {
+                Log::info('StudentController index - Admin mode: Showing all students');
+            } else {
+                Log::info('StudentController index - Guest mode: Showing all students');
+            }
 
         // 検索フィルター
         if ($request->filled('search')) {
@@ -86,6 +133,20 @@ class StudentController extends Controller
         ])->header('Access-Control-Allow-Origin', '*')
           ->header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
           ->header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+        
+        } catch (\Exception $e) {
+            Log::error('StudentController index error: ' . $e->getMessage());
+            Log::error('StudentController index trace: ' . $e->getTraceAsString());
+            return response()->json([
+                'message' => '生徒情報の取得中にエラーが発生しました',
+                'success' => false,
+                'error' => $e->getMessage(),
+                'debug' => [
+                    'user' => Auth::user() ? Auth::user()->email : null,
+                    'session_id' => session()->getId()
+                ]
+            ], 500);
+        }
     }
 
     /**

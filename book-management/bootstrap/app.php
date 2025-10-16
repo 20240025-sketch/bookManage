@@ -12,7 +12,16 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // APIルートでCSRF検証を除外
+        $middleware->validateCsrfTokens(except: [
+            'api/*'
+        ]);
+        
+        // APIルートグループでセッションを使用
+        $middleware->group('api', [
+            \Illuminate\Session\Middleware\StartSession::class,
+            \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+        ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //
