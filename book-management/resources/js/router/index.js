@@ -9,6 +9,9 @@ const BookShow = () => import('../pages/BookShow.vue')
 const BookEdit = () => import('../pages/BookEdit.vue')
 const StudentIndex = () => import('../pages/StudentIndex.vue')
 const BorrowCreate = () => import('../pages/BorrowCreate.vue')
+const BorrowStatus = () => import('../pages/BorrowStatus.vue')
+const UsageStatistics = () => import('../pages/UsageStatistics.vue')
+const LibraryDuty = () => import('../pages/LibraryDuty.vue')
 const BookRequestsIndex = () => import('../pages/BookRequests/Index.vue')
 const Login = () => import('../pages/Login.vue')
 const PasswordSetup = () => import('../pages/PasswordSetup.vue')
@@ -80,6 +83,24 @@ const routes = [
     name: 'BorrowCreate',
     component: BorrowCreate,
     meta: { title: '貸出登録', requiresAuth: true }
+  },
+  {
+    path: '/borrow-status',
+    name: 'BorrowStatus',
+    component: BorrowStatus,
+    meta: { title: '貸出状況', requiresAuth: true }
+  },
+  {
+    path: '/usage-statistics',
+    name: 'UsageStatistics',
+    component: UsageStatistics,
+    meta: { title: '利用状況', requiresAuth: true }
+  },
+  {
+    path: '/library-duty',
+    name: 'LibraryDuty',
+    component: LibraryDuty,
+    meta: { title: '図書当番', requiresAuth: true }
   },
   {
     path: '/book-requests',

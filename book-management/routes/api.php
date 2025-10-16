@@ -107,6 +107,21 @@ Route::middleware('web')->group(function () {
     // JANコード生成のルート
     Route::post('generate-jan-code', [App\Http\Controllers\Api\JanCodeController::class, 'generateJanCode']);
     Route::post('generate-barcode-pdf', [App\Http\Controllers\Api\JanCodeController::class, 'generateBarcodePdf']);
+    
+    // 貸出状況のルート（管理者のみ）
+    Route::get('borrow-status', [App\Http\Controllers\BorrowStatusController::class, 'index']);
+    Route::get('borrow-status/pdf', [App\Http\Controllers\BorrowStatusController::class, 'exportPdf']);
+    
+    // 利用状況のルート（管理者のみ）
+    Route::get('usage-statistics', [App\Http\Controllers\UsageStatisticsController::class, 'index']);
+    Route::get('usage-statistics/chart', [App\Http\Controllers\UsageStatisticsController::class, 'chartData']);
+    Route::post('usage-statistics/pdf', [App\Http\Controllers\UsageStatisticsController::class, 'exportPdf']);
+    
+    // 図書当番のルート（管理者のみ）
+    Route::get('library-duty', [App\Http\Controllers\LibraryDutyController::class, 'index']);
+    Route::get('library-duty/today', [App\Http\Controllers\LibraryDutyController::class, 'today']);
+    Route::put('library-duty/{id}', [App\Http\Controllers\LibraryDutyController::class, 'update']);
+    Route::get('library-duty/pdf', [App\Http\Controllers\LibraryDutyController::class, 'exportPdf']);
 });
 
 // テスト用エンドポイント
