@@ -83,25 +83,17 @@ class JanCodeController extends Controller
             // PDFライブラリを使用してバーコードPDFを生成
             $pdf = $this->generateSimpleBarcodePdf($janCode, $bookTitle, $bookAuthor);
 
-            // ファイル名に書籍タイトルも含める（日本語対応）
-            if ($bookTitle) {
-                // 日本語が含まれている場合は、URL-safe base64エンコードを使用
-                $hasJapanese = preg_match('/[\x{3040}-\x{309F}\x{30A0}-\x{30FF}\x{4E00}-\x{9FAF}]/u', $bookTitle);
-                if ($hasJapanese) {
-                    // 日本語タイトルの場合はJANコードのみでファイル名を生成
-                    $filename = "barcode_{$janCode}.pdf";
-                } else {
-                    // 英語タイトルの場合は従来通り
-                    $safeTitle = preg_replace('/[^\w\-_\.]/', '_', mb_substr($bookTitle, 0, 20));
-                    $filename = "barcode_{$safeTitle}_{$janCode}.pdf";
-                }
-            } else {
-                $filename = "barcode_{$janCode}.pdf";
-            }
+            // ファイル名を生成
+            $filename = "barcode_{$janCode}.pdf";
 
-            return response($pdf)
-                ->header('Content-Type', 'application/pdf')
-                ->header('Content-Disposition', 'attachment; filename="' . $filename . '"');
+            return response($pdf, 200, [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'attachment; filename="' . $filename . '"',
+                'Content-Length' => strlen($pdf),
+                'Cache-Control' => 'no-cache, no-store, must-revalidate',
+                'Pragma' => 'no-cache',
+                'Expires' => '0'
+            ]);
 
         } catch (\Exception $e) {
             Log::error('PDF生成エラー: ' . $e->getMessage());
@@ -138,101 +130,104 @@ class JanCodeController extends Controller
      */
     private function generateSimpleBarcodePdf(string $janCode, string $bookTitle = null, string $bookAuthor = null): string
     {
-        // TCPDFを使用してPDFを生成 (UTF-8エンコーディング対応)
-        $pdf = new \TCPDF('P', 'mm', 'A4', true, 'UTF-8');
-        
-        // PDFの設定
-        $pdf->SetCreator('Book Management System');
-        $pdf->SetAuthor('Book Management System');
-        $pdf->SetTitle('Barcode - ' . ($bookTitle ?: $janCode));
-        $pdf->SetSubject('Book Barcode');
-        
-        // マージン設定
-        $pdf->SetMargins(20, 20, 20);
-        $pdf->SetAutoPageBreak(true, 20);
-        
-        // ページを追加
-        $pdf->AddPage();
-        
-        // タイトル（英語）
-        $pdf->SetFont('helvetica', 'B', 18);
-        $pdf->Cell(0, 15, 'Book Barcode', 0, 1, 'C');
-        $pdf->Ln(5);
-        
-        // 書籍タイトル表示（存在する場合）
-        if ($bookTitle) {
-            // 日本語文字が含まれているかチェック
-            $hasJapanese = preg_match('/[\x{3040}-\x{309F}\x{30A0}-\x{30FF}\x{4E00}-\x{9FAF}]/u', $bookTitle);
+        try {
+            // TCPDFを使用してPDFを生成
+            $pdf = new \TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
             
-            if ($hasJapanese) {
-                // 日本語フォントを使用
-                $pdf->SetFont('cid0jp', 'B', 14);
-            } else {
-                // 英語フォントを使用
-                $pdf->SetFont('helvetica', 'B', 14);
+            // PDFの基本設定
+            $pdf->SetCreator(PDF_CREATOR);
+            $pdf->SetAuthor('Book Management System');
+            $pdf->SetTitle('Barcode');
+            $pdf->SetSubject('Book Barcode');
+            
+            // ヘッダー・フッターを非表示
+            $pdf->setPrintHeader(false);
+            $pdf->setPrintFooter(false);
+            
+            // マージン設定
+            $pdf->SetMargins(15, 15, 15);
+            $pdf->SetAutoPageBreak(true, 15);
+            
+            // ページを追加
+            $pdf->AddPage();
+            
+            // タイトル
+            $pdf->SetFont('helvetica', 'B', 16);
+            $pdf->Cell(0, 10, 'Book Barcode', 0, 1, 'C');
+            $pdf->Ln(5);
+            
+            // 書籍タイトル表示（存在する場合）
+            if ($bookTitle && $bookTitle !== 'Unknown Book') {
+                // 日本語チェック
+                $hasJapanese = preg_match('/[\x{3040}-\x{309F}\x{30A0}-\x{30FF}\x{4E00}-\x{9FAF}]/u', $bookTitle);
+                
+                if ($hasJapanese) {
+                    // 日本語対応フォント
+                    $pdf->SetFont('kozminproregular', '', 12);
+                } else {
+                    $pdf->SetFont('helvetica', '', 12);
+                }
+                
+                // タイトル表示
+                $pdf->MultiCell(0, 8, $bookTitle, 0, 'C', false, 1);
+                $pdf->Ln(3);
             }
             
-            // タイトルが長い場合の処理
-            $titleLines = $pdf->getStringHeight(170, $bookTitle, false, true, '', 1);
-            if ($titleLines > 10) {
-                // 長いタイトルは複数行で表示
-                $pdf->MultiCell(170, 8, $bookTitle, 0, 'C', false, 1, '', '', true);
-            } else {
-                $pdf->Cell(0, 10, $bookTitle, 0, 1, 'C');
+            // 著者表示（存在する場合）
+            if ($bookAuthor) {
+                // 日本語チェック
+                $hasJapanese = preg_match('/[\x{3040}-\x{309F}\x{30A0}-\x{30FF}\x{4E00}-\x{9FAF}]/u', $bookAuthor);
+                
+                if ($hasJapanese) {
+                    $pdf->SetFont('kozminproregular', '', 10);
+                    $authorText = '著者: ' . $bookAuthor;
+                } else {
+                    $pdf->SetFont('helvetica', '', 10);
+                    $authorText = 'Author: ' . $bookAuthor;
+                }
+                
+                $pdf->Cell(0, 6, $authorText, 0, 1, 'C');
+                $pdf->Ln(3);
             }
-            $pdf->Ln(3);
+            
+            // JANコード表示
+            $pdf->SetFont('helvetica', '', 11);
+            $pdf->Cell(0, 8, 'JAN: ' . $janCode, 0, 1, 'C');
+            $pdf->Ln(8);
+            
+            // バーコード生成
+            $barcodeStyle = [
+                'position' => '',
+                'align' => 'C',
+                'stretch' => false,
+                'fitwidth' => true,
+                'cellfitscale' => false,
+                'border' => false,
+                'hpadding' => 'auto',
+                'vpadding' => 'auto',
+                'fgcolor' => [0, 0, 0],
+                'bgcolor' => false,
+                'text' => true,
+                'font' => 'helvetica',
+                'fontsize' => 10,
+                'stretchtext' => 4
+            ];
+            
+            // バーコードを描画
+            $pdf->write1DBarcode($janCode, 'EAN13', '', '', '', 18, 0.4, $barcodeStyle, 'N');
+            
+            // 生成日時
+            $pdf->Ln(20);
+            $pdf->SetFont('helvetica', '', 8);
+            $pdf->Cell(0, 5, 'Generated: ' . date('Y-m-d H:i:s'), 0, 1, 'C');
+            
+            // PDFを文字列として出力
+            return $pdf->Output('', 'S');
+            
+        } catch (\Exception $e) {
+            Log::error('TCPDF生成エラー: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
+            throw $e;
         }
-        
-        // 作者表示（存在する場合）
-        if ($bookAuthor) {
-            // 日本語文字が含まれているかチェック
-            $hasJapanese = preg_match('/[\x{3040}-\x{309F}\x{30A0}-\x{30FF}\x{4E00}-\x{9FAF}]/u', $bookAuthor);
-            
-            if ($hasJapanese) {
-                // 日本語フォントを使用
-                $pdf->SetFont('cid0jp', '', 12);
-                $pdf->Cell(0, 8, '著者: ' . $bookAuthor, 0, 1, 'C');
-            } else {
-                // 英語フォントを使用
-                $pdf->SetFont('helvetica', '', 12);
-                $pdf->Cell(0, 8, 'Author: ' . $bookAuthor, 0, 1, 'C');
-            }
-            $pdf->Ln(3);
-        }
-        
-        // JANコード表示
-        $pdf->SetFont('helvetica', 'B', 12);
-        $pdf->Cell(0, 10, 'JAN Code: ' . $janCode, 0, 1, 'C');
-        $pdf->Ln(10);
-        
-        // バーコード生成（EAN13形式）
-        $style = array(
-            'position' => '',
-            'align' => 'C',
-            'stretch' => false,
-            'fitwidth' => true,
-            'cellfitscale' => false,
-            'border' => false,
-            'hpadding' => 'auto',
-            'vpadding' => 'auto',
-            'fgcolor' => array(0, 0, 0),
-            'bgcolor' => false,
-            'text' => true,
-            'font' => 'helvetica',
-            'fontsize' => 10,
-            'stretchtext' => 4
-        );
-        
-        // EAN-13バーコードを描画
-        $pdf->write1DBarcode($janCode, 'EAN13', '', '', '', 18, 0.4, $style, 'N');
-        
-        // 生成日時を追加
-        $pdf->Ln(25);
-        $pdf->SetFont('helvetica', '', 10);
-        $pdf->Cell(0, 8, 'Generated: ' . date('Y-m-d H:i:s'), 0, 1, 'C');
-        $pdf->Cell(0, 8, 'Book Management System', 0, 1, 'C');
-        
-        // PDFを文字列として出力
-        return $pdf->Output('', 'S');
     }
 }

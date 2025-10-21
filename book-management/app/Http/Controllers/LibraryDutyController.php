@@ -88,26 +88,30 @@ class LibraryDutyController extends Controller
                 ], 403);
             }
             
-            $today = Carbon::today()->format('Y-m-d');
+            $today = Carbon::today();
             
             // 本日の貸出人数を計算
             $borrowCount = Borrow::whereDate('borrowed_date', $today)->count();
             
             // 本日の記録を取得または作成
-            $duty = LibraryDuty::firstOrCreate(
-                ['duty_date' => $today],
-                [
+            $duty = LibraryDuty::whereDate('duty_date', $today)->first();
+            
+            if (!$duty) {
+                $duty = LibraryDuty::create([
+                    'duty_date' => $today->format('Y-m-d'),
                     'visitor_count' => 0,
                     'borrow_count' => $borrowCount,
                     'reflection' => '',
+                    'student_id' => null,
+                    'student_id_2' => null,
                     'student_name_1' => '',
                     'student_name_2' => ''
-                ]
-            );
-            
-            // 貸出人数を更新
-            $duty->borrow_count = $borrowCount;
-            $duty->save();
+                ]);
+            } else {
+                // 貸出人数を更新
+                $duty->borrow_count = $borrowCount;
+                $duty->save();
+            }
             
             return response()->json([
                 'success' => true,

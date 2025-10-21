@@ -67,36 +67,36 @@ Route::middleware('web')->group(function () {
     // 書籍管理のルート
     Route::get('books', [BookController::class, 'index']);
     Route::post('books', [BookController::class, 'store']);
-    Route::get('books/{book}', [BookController::class, 'show']);
-    Route::put('books/{book}', [BookController::class, 'update']);
-    Route::delete('books/{book}', [BookController::class, 'destroy']);
     Route::get('books/pdf', [BookController::class, 'exportPdf']);
     Route::get('books/available', [BookController::class, 'available']);
-    Route::get('books/{book}/history', [BookController::class, 'history']);
     Route::post('books/search-isbn', [BookController::class, 'searchByISBN']);
     Route::get('books/search-by-isbn', [BookController::class, 'searchByISBN']);
     Route::get('books/search-by-jan', [BookController::class, 'searchByJanCode']);
     Route::get('books/acceptance-sources', [BookController::class, 'getAcceptanceSources']);
+    Route::get('books/{book}', [BookController::class, 'show']);
+    Route::put('books/{book}', [BookController::class, 'update']);
+    Route::delete('books/{book}', [BookController::class, 'destroy']);
+    Route::get('books/{book}/history', [BookController::class, 'history']);
     
     // 生徒管理のルート
     Route::get('students', [StudentController::class, 'index']);
     Route::post('students', [StudentController::class, 'store']);
+    Route::get('students/classes', [StudentController::class, 'classes']);
     Route::get('students/{student}', [StudentController::class, 'show']);
     Route::put('students/{student}', [StudentController::class, 'update']);
     Route::delete('students/{student}', [StudentController::class, 'destroy']);
-    Route::get('students/classes', [StudentController::class, 'classes']);
     Route::get('students/{student}/borrows', [StudentController::class, 'getBorrows']);
     
     // 貸し借り管理のルート
     Route::get('borrows', [BorrowController::class, 'index']);
     Route::post('borrows', [BorrowController::class, 'store']);
+    Route::post('borrows/batch', [BorrowController::class, 'batchStore']);
+    Route::post('borrows/batch-return', [BorrowController::class, 'batchReturn']);
+    Route::get('borrows/recent', [BorrowController::class, 'recent']);
     Route::get('borrows/{borrow}', [BorrowController::class, 'show']);
     Route::put('borrows/{borrow}', [BorrowController::class, 'update']);
     Route::delete('borrows/{borrow}', [BorrowController::class, 'destroy']);
-    Route::post('borrows/batch', [BorrowController::class, 'batchStore']);
-    Route::post('borrows/batch-return', [BorrowController::class, 'batchReturn']);
     Route::patch('borrows/{borrow}/return', [BorrowController::class, 'returnBook']);
-    Route::get('borrows/recent', [BorrowController::class, 'recent']);
     
     // 本のリクエスト機能のルート
     Route::get('book-requests', [BookRequestController::class, 'index']);
@@ -120,8 +120,8 @@ Route::middleware('web')->group(function () {
     // 図書当番のルート（管理者のみ）
     Route::get('library-duty', [App\Http\Controllers\LibraryDutyController::class, 'index']);
     Route::get('library-duty/today', [App\Http\Controllers\LibraryDutyController::class, 'today']);
-    Route::put('library-duty/{id}', [App\Http\Controllers\LibraryDutyController::class, 'update']);
     Route::get('library-duty/pdf', [App\Http\Controllers\LibraryDutyController::class, 'exportPdf']);
+    Route::put('library-duty/{id}', [App\Http\Controllers\LibraryDutyController::class, 'update']);
 });
 
 // テスト用エンドポイント
