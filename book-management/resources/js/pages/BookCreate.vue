@@ -92,10 +92,10 @@ const form = reactive({
   ndc: '',
   quantity: 1,
   acceptance_date: '',
-  acceptance_type: '',
-  acceptance_source: '',
+  acceptance_type: '購入',
+  acceptance_source: '文英堂',
   discard: '',
-  storage_location: ''
+  storage_location: '図書室'
 });
 
 const fetchBookByIsbn = async (isbn) => {
@@ -201,6 +201,12 @@ const resetForm = () => {
       form[key] = null;
     } else if (key === 'quantity') {
       form[key] = 1; // 冊数のデフォルト値
+    } else if (key === 'acceptance_type') {
+      form[key] = '購入'; // 受け入れ種別のデフォルト値
+    } else if (key === 'acceptance_source') {
+      form[key] = '文英堂'; // 受け入れ元のデフォルト値
+    } else if (key === 'storage_location') {
+      form[key] = '図書室'; // 保管場所のデフォルト値
     } else {
       form[key] = '';
     }

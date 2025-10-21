@@ -9,10 +9,10 @@ class UsageStatisticsPdfService
     public static function generate($data)
     {
         // TCPDFインスタンスを作成
-        $pdf = new TCPDF('P', 'mm', 'A4', true, 'UTF-8', false);
+        $pdf = new TCPDF(PDF_PAGE_ORIENTATION, PDF_UNIT, PDF_PAGE_FORMAT, true, 'UTF-8', false);
         
         // ドキュメント情報
-        $pdf->SetCreator('図書管理システム');
+        $pdf->SetCreator(PDF_CREATOR);
         $pdf->SetAuthor('図書管理システム');
         $pdf->SetTitle('利用状況レポート');
         $pdf->SetSubject('利用状況レポート');
@@ -149,8 +149,45 @@ class UsageStatisticsPdfService
             $tempFile = tempnam(sys_get_temp_dir(), 'chart_') . '.png';
             file_put_contents($tempFile, $imageData);
             
+            // GDを使用してアルファチャンネルを削除し、JPEGに変換
+            if (extension_loaded('gd')) {
+                try {
+                    $im = imagecreatefrompng($tempFile);
+                    if ($im !== false) {
+                        // 白背景の新しい画像を作成
+                        $width = imagesx($im);
+                        $height = imagesy($im);
+                        $newIm = imagecreatetruecolor($width, $height);
+                        $white = imagecolorallocate($newIm, 255, 255, 255);
+                        imagefill($newIm, 0, 0, $white);
+                        
+                        // 元の画像を白背景にコピー
+                        imagecopy($newIm, $im, 0, 0, 0, 0, $width, $height);
+                        
+                        // JPEGとして保存
+                        $jpegFile = tempnam(sys_get_temp_dir(), 'chart_') . '.jpg';
+                        imagejpeg($newIm, $jpegFile, 90);
+                        
+                        // メモリ解放
+                        imagedestroy($im);
+                        imagedestroy($newIm);
+                        unlink($tempFile);
+                        
+                        // JPEGファイルを使用
+                        $tempFile = $jpegFile;
+                        $imageType = 'JPEG';
+                    } else {
+                        $imageType = 'PNG';
+                    }
+                } catch (\Exception $e) {
+                    $imageType = 'PNG';
+                }
+            } else {
+                $imageType = 'PNG';
+            }
+            
             // 画像を挿入（幅150mm、アスペクト比維持）
-            $pdf->Image($tempFile, 15, $pdf->GetY(), 150, 0, 'PNG');
+            $pdf->Image($tempFile, 15, $pdf->GetY(), 150, 0, $imageType);
             
             // 一時ファイルを削除
             unlink($tempFile);

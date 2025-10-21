@@ -302,9 +302,9 @@ const bookForm = reactive({
   ndc: '',
   quantity: 1,
   acceptance_date: '',
-  acceptance_type: '',
-  acceptance_source: '',
-  storage_location: ''
+  acceptance_type: '購入',
+  acceptance_source: '文英堂',
+  storage_location: '図書室'
 });
 
 // JANコード生成
