@@ -4,8 +4,8 @@
 
     <!-- クイックアクセスセクション -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <!-- 貸出登録カード -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      <!-- 貸出登録カード (メールアドレスが数字で始まる利用者または管理者のみ表示) -->
+      <div v-if="shouldShowBorrowFeature" class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         <div class="p-6">
           <div class="flex items-center justify-between mb-4">
             <h2 class="text-lg font-semibold text-gray-900">貸出登録</h2>
@@ -87,19 +87,64 @@
         </router-link>
       </div>
 
-      <!-- 生徒一覧 -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-        <h2 class="text-lg font-semibold text-gray-900 mb-4">生徒一覧</h2>
+      <!-- 生徒一覧 (メールアドレスが数字で始まる利用者または管理者のみ表示) -->
+      <div v-if="shouldShowStudentInfo" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+        <h2 class="text-lg font-semibold text-gray-900 mb-4">{{ userPermissions.isAdmin ? '生徒一覧' : '自分の情報' }}</h2>
         <p class="text-gray-600 mb-4">
-          生徒の一覧と貸出状況を確認できます。
+          {{ userPermissions.isAdmin ? '生徒の一覧と貸出状況を確認できます。' : '自分の生徒情報を確認できます。' }}
         </p>
         <router-link
           to="/students"
           class="text-blue-600 hover:text-blue-800 text-sm font-medium"
         >
-          生徒一覧へ →
+          {{ userPermissions.isAdmin ? '生徒一覧へ →' : '自分の情報へ →' }}
         </router-link>
       </div>
     </div>
   </div>
 </template>
+
+<script setup>
+import { ref, computed } from 'vue'
+
+// 権限管理
+const userPermissions = ref({
+  isAdmin: false
+})
+
+// ローカルストレージから権限情報を読み込み
+const loadPermissions = () => {
+  try {
+    const stored = localStorage.getItem('userPermissions')
+    if (stored) {
+      userPermissions.value = { ...userPermissions.value, ...JSON.parse(stored) }
+    }
+  } catch (error) {
+    console.error('権限情報の読み込みに失敗:', error)
+  }
+}
+
+loadPermissions()
+
+// メールアドレスが数字で始まるかチェック（管理者は常にtrue）
+const shouldShowStudentInfo = computed(() => {
+  if (userPermissions.value.isAdmin) return true
+  
+  const student = JSON.parse(localStorage.getItem('student') || '{}')
+  const email = student.email || ''
+  
+  // メールアドレスが数字で始まる場合のみ表示
+  return /^[0-9]/.test(email)
+})
+
+// 貸出登録機能の表示判定（管理者は常にtrue、利用者はメールアドレスが数字で始まる場合のみ）
+const shouldShowBorrowFeature = computed(() => {
+  if (userPermissions.value.isAdmin) return true
+  
+  const student = JSON.parse(localStorage.getItem('student') || '{}')
+  const email = student.email || ''
+  
+  // メールアドレスが数字で始まる場合のみ表示
+  return /^[0-9]/.test(email)
+})
+</script>

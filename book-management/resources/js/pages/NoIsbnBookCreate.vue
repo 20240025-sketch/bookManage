@@ -412,12 +412,37 @@ const submitBook = async () => {
     
     submitSuccess.value = true;
     
-    // 3秒後に書籍一覧にリダイレクト
+    // 登録成功後、保持するフィールドの値を保存
+    const preservedFields = {
+      acceptance_date: bookForm.acceptance_date,
+      acceptance_type: bookForm.acceptance_type,
+      acceptance_source: bookForm.acceptance_source,
+      storage_location: bookForm.storage_location
+    };
+    
+    // フォームをリセット（保持フィールド以外をクリア）
+    Object.keys(bookForm).forEach(key => {
+      if (key in preservedFields) {
+        // 保持するフィールドはそのまま
+        bookForm[key] = preservedFields[key];
+      } else if (key === 'pages' || key === 'price') {
+        bookForm[key] = null;
+      } else if (key === 'quantity') {
+        bookForm[key] = 1; // 冊数のデフォルト値
+      } else {
+        bookForm[key] = '';
+      }
+    });
+    
+    // JANコードをリセット
+    resetJanCode();
+    
+    // 成功メッセージを表示
+    alert('書籍が正常に登録されました。続けて登録できます。');
+    
+    // submitSuccessを数秒後にリセット
     setTimeout(() => {
-      router.push({
-        name: 'BookIndex',
-        query: { success: '独自JANコード付き書籍が正常に登録されました' }
-      });
+      submitSuccess.value = false;
     }, 3000);
     
   } catch (error) {

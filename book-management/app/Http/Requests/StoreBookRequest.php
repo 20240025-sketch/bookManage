@@ -19,7 +19,20 @@ class StoreBookRequest extends FormRequest
             'author' => 'nullable|string|max:255',
             'publisher' => 'nullable|string|max:255',
             'published_date' => 'nullable|date',
-            'isbn' => 'nullable|string|max:20',
+            'isbn' => [
+                'nullable',
+                'string',
+                'max:20',
+                function ($attribute, $value, $fail) {
+                    // ISBNが入力されている場合のみ重複チェック
+                    if (!empty($value)) {
+                        $exists = \App\Models\Book::where('isbn', $value)->exists();
+                        if ($exists) {
+                            $fail('このISBNは既に登録されています。');
+                        }
+                    }
+                },
+            ],
             'pages' => 'nullable|integer|min:1',
             'price' => 'nullable|integer|min:0',
             'ndc' => 'nullable|string|max:100',

@@ -112,6 +112,19 @@
             初回パスワード設定
           </button>
         </div>
+
+        <!-- 管理者ログインへのリンク -->
+        <div class="text-sm text-center pt-4 border-t border-gray-200">
+          <router-link 
+            to="/admin-login"
+            class="font-medium text-purple-600 hover:text-purple-500 flex items-center justify-center gap-2"
+          >
+            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            管理者ログイン
+          </router-link>
+        </div>
       </form>
     </div>
   </div>
@@ -152,18 +165,26 @@ export default {
           console.log('ログイン成功:', response.data.student)
           localStorage.setItem('student', JSON.stringify(response.data.student))
           
-          // 権限情報を保存
-          if (response.data.permissions) {
-            console.log('権限情報を保存:', response.data.permissions)
-            localStorage.setItem('userPermissions', JSON.stringify(response.data.permissions))
-            
-            // グローバル権限更新関数が利用可能な場合は呼び出し
-            if (window.updateUserPermissions) {
-              window.updateUserPermissions(response.data.permissions)
-            }
+          // 通常ログインは利用者として設定
+          localStorage.setItem('isAdmin', 'false')
+          localStorage.setItem('userRole', 'user')
+          
+          // 権限情報を保存（通常ログインは強制的にisAdmin=falseを設定）
+          const permissions = response.data.permissions || {}
+          const userPermissions = {
+            ...permissions,
+            isAdmin: false  // 通常ログインでは必ずfalseに設定
           }
           
-          console.log('localStorage設定完了')
+          console.log('権限情報を保存（利用者として制限）:', userPermissions)
+          localStorage.setItem('userPermissions', JSON.stringify(userPermissions))
+          
+          // グローバル権限更新関数が利用可能な場合は呼び出し
+          if (window.updateUserPermissions) {
+            window.updateUserPermissions(userPermissions)
+          }
+          
+          console.log('localStorage設定完了（利用者としてログイン）')
           
           // 強制的にページをリロードして書籍一覧に遷移
           console.log('書籍一覧ページに遷移します（window.location）')

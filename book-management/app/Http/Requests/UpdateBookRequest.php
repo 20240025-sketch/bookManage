@@ -13,13 +13,30 @@ class UpdateBookRequest extends FormRequest
 
     public function rules(): array
     {
+        $bookId = $this->route('book'); // 更新対象のbook ID
+        
         return [
             'title' => 'required|string|max:255',
             'title_transcription' => 'nullable|string|max:255',
             'author' => 'nullable|string|max:255',
             'publisher' => 'nullable|string|max:255',
             'published_date' => 'nullable|date',
-            'isbn' => 'nullable|string|max:20',
+            'isbn' => [
+                'nullable',
+                'string',
+                'max:20',
+                function ($attribute, $value, $fail) use ($bookId) {
+                    // ISBNが入力されている場合のみ重複チェック（自分自身は除外）
+                    if (!empty($value)) {
+                        $exists = \App\Models\Book::where('isbn', $value)
+                            ->where('id', '!=', $bookId)
+                            ->exists();
+                        if ($exists) {
+                            $fail('このISBNは既に他の書籍で登録されています。');
+                        }
+                    }
+                },
+            ],
             'pages' => 'nullable|integer|min:1',
             'price' => 'nullable|integer|min:0',
             'ndc' => 'nullable|string|max:100',

@@ -404,6 +404,23 @@ const selectedStudent = ref(null);
 const borrowedDate = ref(new Date().toISOString().split('T')[0]);
 const error = ref('');
 
+// 権限管理
+const userPermissions = ref({
+  isAdmin: false
+});
+
+// 権限情報をローカルストレージから読み込み
+const loadPermissions = () => {
+  try {
+    const stored = localStorage.getItem('userPermissions')
+    if (stored) {
+      userPermissions.value = { ...userPermissions.value, ...JSON.parse(stored) }
+    }
+  } catch (error) {
+    console.error('権限情報の読み込みに失敗:', error)
+  }
+}
+
 // 本日の日付（貸出日の上限として使用）
 const today = new Date().toISOString().split('T')[0];
 
@@ -680,6 +697,20 @@ const resetForm = () => {
 
 // ページマウント時にISBN検索フィールドにフォーカス
 onMounted(() => {
+  loadPermissions();
+  
+  // メールアドレスが数字で始まるかチェック（管理者以外の利用者の場合）
+  if (!userPermissions.value.isAdmin) {
+    const student = JSON.parse(localStorage.getItem('student') || '{}')
+    const email = student.email || ''
+    
+    // メールアドレスが数字以外で始まる場合、アクセス拒否
+    if (!/^[0-9]/.test(email)) {
+      error.value = 'この機能にアクセスする権限がありません'
+      return
+    }
+  }
+  
   loadGradeClasses(); // 学年・クラス一覧を読み込み
   nextTick(() => {
     const isbnInput = document.getElementById('isbnSearch');

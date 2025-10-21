@@ -50,8 +50,9 @@
               <span class="text-xs text-gray-500 text-center">新しい本を追加</span>
             </router-link>
             
-            <!-- 生徒一覧 (全ユーザー利用可能) -->
+            <!-- 生徒一覧 (メールアドレスが数字で始まる利用者または管理者のみ表示) -->
             <router-link 
+              v-if="shouldShowStudentInfo"
               to="/students" 
               class="flex flex-col items-center px-4 py-3 min-w-0 flex-shrink-0 text-gray-700 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-all duration-200"
               :class="{ 'text-purple-600 bg-purple-50 border-b-2 border-purple-600': $route.path === '/students' }"
@@ -63,9 +64,9 @@
               <span class="text-xs text-gray-500 text-center">{{ userPermissions.isAdmin ? '生徒情報管理' : '個人情報確認' }}</span>
             </router-link>
             
-            <!-- 貸出登録 (管理者のみ) -->
+            <!-- 貸出登録 (メールアドレスが数字で始まる利用者または管理者のみ表示) -->
             <router-link 
-              v-if="userPermissions.canCreateBorrows"
+              v-if="userPermissions.canCreateBorrows && shouldShowBorrowFeature"
               to="/borrows/create" 
               class="flex flex-col items-center px-4 py-3 min-w-0 flex-shrink-0 text-gray-700 hover:text-orange-600 hover:bg-orange-50 rounded-lg transition-all duration-200"
               :class="{ 'text-orange-600 bg-orange-50 border-b-2 border-orange-600': $route.path === '/borrows/create' }"
@@ -201,6 +202,28 @@ const savePermissions = (permissions) => {
 
 // グローバルに権限情報を提供
 window.updateUserPermissions = savePermissions
+
+// メールアドレスが数字で始まるかチェック（管理者は常にtrue）
+const shouldShowStudentInfo = computed(() => {
+  if (userPermissions.value.isAdmin) return true
+  
+  const student = JSON.parse(localStorage.getItem('student') || '{}')
+  const email = student.email || ''
+  
+  // メールアドレスが数字で始まる場合のみ表示
+  return /^[0-9]/.test(email)
+})
+
+// 貸出登録機能の表示判定（管理者は常にtrue、利用者はメールアドレスが数字で始まる場合のみ）
+const shouldShowBorrowFeature = computed(() => {
+  if (userPermissions.value.isAdmin) return true
+  
+  const student = JSON.parse(localStorage.getItem('student') || '{}')
+  const email = student.email || ''
+  
+  // メールアドレスが数字で始まる場合のみ表示
+  return /^[0-9]/.test(email)
+})
 
 // ページ読み込み時にナビゲーションの表示状態を復元
 onMounted(() => {

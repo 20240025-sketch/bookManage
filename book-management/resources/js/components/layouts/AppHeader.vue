@@ -31,7 +31,12 @@
               <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
                 {{ currentStudent.name.charAt(0) }}
               </div>
-              <span class="text-sm font-medium text-gray-700">{{ currentStudent.name }}</span>
+              <div class="flex flex-col items-start">
+                <span class="text-sm font-medium text-gray-700">{{ currentStudent.name }}</span>
+                <span v-if="userRole" class="text-xs" :class="userRole === 'admin' ? 'text-purple-600 font-semibold' : 'text-gray-500'">
+                  {{ userRole === 'admin' ? '👑 管理者' : '📖 利用者' }}
+                </span>
+              </div>
               <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
               </svg>
@@ -40,7 +45,10 @@
             <!-- ドロップダウンメニュー -->
             <div v-if="showUserMenu" class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
               <div class="px-4 py-2 text-xs text-gray-500 border-b">
-                {{ currentStudent.email }}
+                <div>{{ currentStudent.email }}</div>
+                <div v-if="userRole" class="mt-1 font-semibold" :class="userRole === 'admin' ? 'text-purple-600' : 'text-blue-600'">
+                  {{ userRole === 'admin' ? '管理者アカウント' : '利用者アカウント' }}
+                </div>
               </div>
               <button @click="changePassword" class="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">パスワード変更</button>
               <hr class="my-1">
@@ -68,6 +76,7 @@ import axios from 'axios';
 const router = useRouter();
 const showUserMenu = ref(false);
 const currentStudent = ref(null);
+const userRole = ref(null);
 
 // 認証されたユーザー情報を取得
 const loadCurrentStudent = () => {
@@ -75,6 +84,10 @@ const loadCurrentStudent = () => {
   if (student) {
     currentStudent.value = JSON.parse(student);
   }
+  
+  // ユーザーロールを取得
+  const role = localStorage.getItem('userRole');
+  userRole.value = role || 'user'; // デフォルトは利用者
 };
 
 const toggleUserMenu = () => {
@@ -89,7 +102,11 @@ const logout = async () => {
   } finally {
     // ローカルストレージをクリア
     localStorage.removeItem('student');
+    localStorage.removeItem('isAdmin');
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('userPermissions');
     currentStudent.value = null;
+    userRole.value = null;
     // ログインページにリダイレクト
     router.push('/login');
   }

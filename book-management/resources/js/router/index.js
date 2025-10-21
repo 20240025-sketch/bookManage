@@ -14,6 +14,7 @@ const UsageStatistics = () => import('../pages/UsageStatistics.vue')
 const LibraryDuty = () => import('../pages/LibraryDuty.vue')
 const BookRequestsIndex = () => import('../pages/BookRequests/Index.vue')
 const Login = () => import('../pages/Login.vue')
+const AdminLogin = () => import('../pages/AdminLogin.vue')
 const PasswordSetup = () => import('../pages/PasswordSetup.vue')
 const PasswordChange = () => import('../pages/PasswordChange.vue')
 
@@ -27,6 +28,12 @@ const routes = [
     name: 'Login',
     component: Login,
     meta: { title: 'ログイン', requiresGuest: true }
+  },
+  {
+    path: '/admin-login',
+    name: 'AdminLogin',
+    component: AdminLogin,
+    meta: { title: '管理者ログイン', requiresGuest: true }
   },
   {
     path: '/password-setup',

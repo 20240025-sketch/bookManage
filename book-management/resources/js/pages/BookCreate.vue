@@ -98,6 +98,37 @@ const form = reactive({
   storage_location: '図書室'
 });
 
+const checkIsbnDuplicate = async (isbn) => {
+  if (!isbn || isbn.length < 10) {
+    return false;
+  }
+
+  try {
+    // データベースで重複チェック
+    const response = await axios.get(`/api/books`, { 
+      params: { 
+        search: isbn,
+        per_page: 1
+      } 
+    });
+    
+    // 完全一致するISBNが存在するかチェック
+    const books = response.data.data || [];
+    const duplicate = books.find(book => book.isbn === isbn);
+    
+    if (duplicate) {
+      isbnSearchSuccess.value = false;
+      isbnSearchMessage.value = `⚠️ このISBNは既に登録されています（書籍ID: ${duplicate.id}, タイトル: ${duplicate.title}）`;
+      return true;
+    }
+    
+    return false;
+  } catch (err) {
+    console.error('ISBN重複チェックエラー:', err);
+    return false;
+  }
+};
+
 const fetchBookByIsbn = async (isbn) => {
   if (!isbn || isbn.length < 10) {
     isbnSearchMessage.value = '';
@@ -109,6 +140,13 @@ const fetchBookByIsbn = async (isbn) => {
   isbnSearchMessage.value = 'ISBN検索中...';
   isbnSearchSuccess.value = false;
   generalError.value = '';
+
+  // まず重複チェック
+  const isDuplicate = await checkIsbnDuplicate(isbn);
+  if (isDuplicate) {
+    isbnSearching.value = false;
+    return;
+  }
 
   try {
     const response = await axios.get(`/api/books/search-by-isbn`, { params: { isbn } });
@@ -162,6 +200,13 @@ const fetchBookByJanCode = async (janCode) => {
   isbnSearchMessage.value = 'JANコード検索中...';
   isbnSearchSuccess.value = false;
   generalError.value = '';
+
+  // まず重複チェック
+  const isDuplicate = await checkIsbnDuplicate(janCode);
+  if (isDuplicate) {
+    isbnSearching.value = false;
+    return;
+  }
 
   try {
     const response = await axios.get(`/api/books/search-by-jan`, { params: { jan_code: janCode } });
@@ -239,11 +284,46 @@ const submitForm = async () => {
   try {
     const response = await axios.post('/api/books', form);
     
-    // 成功時は書籍一覧ページに遷移
-    router.push({
-      name: 'BookIndex',
-      query: { success: '書籍が正常に登録されました' }
+    // 登録成功後、保持するフィールドの値を保存
+    const preservedFields = {
+      acceptance_date: form.acceptance_date,
+      acceptance_type: form.acceptance_type,
+      acceptance_source: form.acceptance_source,
+      storage_location: form.storage_location,
+      discard: form.discard
+    };
+    
+    // フォームをリセット（保持フィールド以外をクリア）
+    Object.keys(form).forEach(key => {
+      if (key in preservedFields) {
+        // 保持するフィールドはそのまま
+        form[key] = preservedFields[key];
+      } else if (key === 'pages' || key === 'price') {
+        form[key] = null;
+      } else if (key === 'quantity') {
+        form[key] = 1; // 冊数のデフォルト値
+      } else {
+        form[key] = '';
+      }
     });
+    
+    // ISBN検索状態もリセット
+    isbnSearching.value = false;
+    isbnSearchMessage.value = '';
+    isbnSearchSuccess.value = false;
+    
+    // 成功メッセージを表示
+    generalError.value = '';
+    
+    // ISBNフィールドにフォーカス
+    await nextTick();
+    const isbnInput = document.getElementById('isbn');
+    if (isbnInput) {
+      isbnInput.focus();
+    }
+    
+    // 成功メッセージを一時的に表示
+    alert('書籍が正常に登録されました。続けて登録できます。');
     
   } catch (error) {
     if (error.response && error.response.status === 422) {

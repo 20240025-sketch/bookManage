@@ -1356,6 +1356,20 @@ const getDaysUntilDue = (dueDate) => {
 // コンポーネントのマウント時に生徒一覧を取得
 onMounted(() => {
   loadPermissions();
+  
+  // メールアドレスが数字で始まるかチェック（管理者以外の利用者の場合）
+  if (!userPermissions.value.isAdmin) {
+    const student = JSON.parse(localStorage.getItem('student') || '{}')
+    const email = student.email || ''
+    
+    // メールアドレスが数字以外で始まる場合、アクセス拒否
+    if (!/^[0-9]/.test(email)) {
+      error.value = 'この機能にアクセスする権限がありません'
+      loading.value = false
+      return
+    }
+  }
+  
   loadStudents();
   loadGradeClasses();
 });
