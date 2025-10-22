@@ -36,9 +36,9 @@
               <span class="text-xs text-gray-500 text-center">本を探す・確認</span>
             </router-link>
             
-            <!-- 書籍登録 (管理者のみ) -->
+            <!-- 書籍登録 (メールアドレスが数字で始まる利用者または管理者のみ表示) -->
             <router-link 
-              v-if="userPermissions.canCreateBooks"
+              v-if="userPermissions.canCreateBooks && shouldShowBookRegistration"
               to="/books/create" 
               class="flex flex-col items-center px-4 py-3 min-w-0 flex-shrink-0 text-gray-700 hover:text-green-600 hover:bg-green-50 rounded-lg transition-all duration-200"
               :class="{ 'text-green-600 bg-green-50 border-b-2 border-green-600': $route.path === '/books/create' }"
@@ -216,6 +216,17 @@ const shouldShowStudentInfo = computed(() => {
 
 // 貸出登録機能の表示判定（管理者は常にtrue、利用者はメールアドレスが数字で始まる場合のみ）
 const shouldShowBorrowFeature = computed(() => {
+  if (userPermissions.value.isAdmin) return true
+  
+  const student = JSON.parse(localStorage.getItem('student') || '{}')
+  const email = student.email || ''
+  
+  // メールアドレスが数字で始まる場合のみ表示
+  return /^[0-9]/.test(email)
+})
+
+// 書籍登録機能の表示判定（管理者は常にtrue、利用者はメールアドレスが数字で始まる場合のみ）
+const shouldShowBookRegistration = computed(() => {
   if (userPermissions.value.isAdmin) return true
   
   const student = JSON.parse(localStorage.getItem('student') || '{}')

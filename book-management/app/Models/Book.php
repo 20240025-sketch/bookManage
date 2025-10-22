@@ -64,10 +64,15 @@ class Book extends Model
     // 検索スコープ
     public function scopeSearch($query, $search)
     {
-        return $query->where(function ($q) use ($search) {
+        // ISBNの正規化（ハイフンを削除）
+        $normalizedSearch = preg_replace('/[-\s]/', '', $search);
+        
+        return $query->where(function ($q) use ($search, $normalizedSearch) {
             $q->where('title', 'like', "%{$search}%")
               ->orWhere('author', 'like', "%{$search}%")
-              ->orWhere('publisher', 'like', "%{$search}%");
+              ->orWhere('publisher', 'like', "%{$search}%")
+              ->orWhere('isbn', 'like', "%{$search}%")
+              ->orWhere('isbn', 'like', "%{$normalizedSearch}%");
         });
     }
 }

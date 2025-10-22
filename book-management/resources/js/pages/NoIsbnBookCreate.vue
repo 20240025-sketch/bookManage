@@ -291,6 +291,23 @@ const submitError = ref('');
 const submitSuccess = ref(false);
 const errors = ref({});
 
+// 権限管理
+const userPermissions = ref({
+  isAdmin: false
+});
+
+// 権限情報をローカルストレージから読み込み
+const loadPermissions = () => {
+  try {
+    const stored = localStorage.getItem('userPermissions')
+    if (stored) {
+      userPermissions.value = { ...userPermissions.value, ...JSON.parse(stored) }
+    }
+  } catch (error) {
+    console.error('権限情報の読み込みに失敗:', error)
+  }
+}
+
 // 書籍フォームデータ
 const bookForm = reactive({
   title: '',
@@ -458,6 +475,20 @@ const submitBook = async () => {
 
 // ページマウント時の初期化
 onMounted(() => {
+  loadPermissions();
+  
+  // メールアドレスが数字で始まるかチェック（管理者以外の利用者の場合）
+  if (!userPermissions.value.isAdmin) {
+    const student = JSON.parse(localStorage.getItem('student') || '{}')
+    const email = student.email || ''
+    
+    // メールアドレスが数字以外で始まる場合、アクセス拒否
+    if (!/^[0-9]/.test(email)) {
+      submitError.value = 'この機能にアクセスする権限がありません'
+      return
+    }
+  }
+  
   // 今日の日付をデフォルト値に設定
   const today = new Date().toISOString().split('T')[0];
   bookForm.acceptance_date = today;

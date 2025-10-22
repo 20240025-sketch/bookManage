@@ -189,14 +189,8 @@ class AuthController extends Controller
      */
     public function changePassword(Request $request)
     {
-        if (!Auth::check()) {
-            return response()->json([
-                'success' => false,
-                'message' => 'ログインが必要です。'
-            ], 401);
-        }
-
         $validator = Validator::make($request->all(), [
+            'email' => 'required|email',
             'current_password' => 'required|string',
             'password' => 'required|string|min:6|confirmed',
         ]);
@@ -209,8 +203,8 @@ class AuthController extends Controller
             ], 422);
         }
 
-        $authUser = Auth::user();
-        $student = Student::find($authUser->id);
+        // メールアドレスで生徒を検索
+        $student = Student::where('email', $request->email)->first();
 
         if (!$student) {
             return response()->json([
@@ -219,6 +213,15 @@ class AuthController extends Controller
             ], 404);
         }
 
+        // パスワードが設定されていない場合
+        if (!$student->password) {
+            return response()->json([
+                'success' => false,
+                'message' => 'パスワードが設定されていません。先にパスワード設定を行ってください。'
+            ], 400);
+        }
+
+        // 現在のパスワードを確認
         if (!Hash::check($request->current_password, $student->password)) {
             return response()->json([
                 'success' => false,
@@ -226,6 +229,7 @@ class AuthController extends Controller
             ], 400);
         }
 
+        // 新しいパスワードを設定
         $student->password = Hash::make($request->password);
         $student->save();
 

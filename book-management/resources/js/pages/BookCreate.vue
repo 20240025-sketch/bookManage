@@ -35,11 +35,12 @@
         :isbn-searching="isbnSearching"
         :isbn-search-message="isbnSearchMessage"
         :isbn-search-success="isbnSearchSuccess"
+        :isbn-duplicate="isbnDuplicate"
         :no-isbn-mode="noIsbnMode"
         submit-label="書籍を登録"
         @submit="submitForm"
         @reset="resetForm"
-        @isbn-blur="(isbn) => { fetchBookByIsbn(isbn); fetchBookByJanCode(isbn); }"
+        @isbn-blur="handleIsbnBlur"
       />      <!-- エラー表示 -->
       <div v-if="generalError" class="mt-4 p-4 bg-red-50 border border-red-200 rounded-md">
         <div class="flex">
@@ -72,10 +73,28 @@ const loading = ref(false);
 const errors = ref({});
 const generalError = ref('');
 
+// 権限管理
+const userPermissions = ref({
+  isAdmin: false
+});
+
+// 権限情報をローカルストレージから読み込み
+const loadPermissions = () => {
+  try {
+    const stored = localStorage.getItem('userPermissions')
+    if (stored) {
+      userPermissions.value = { ...userPermissions.value, ...JSON.parse(stored) }
+    }
+  } catch (error) {
+    console.error('権限情報の読み込みに失敗:', error)
+  }
+}
+
 // ISBN検索状態
 const isbnSearching = ref(false);
 const isbnSearchMessage = ref('');
 const isbnSearchSuccess = ref(false);
+const isbnDuplicate = ref(false); // ISBN重複検出フラグ
 
 // ISBNなしモード
 const noIsbnMode = ref(false);
@@ -100,32 +119,87 @@ const form = reactive({
 
 const checkIsbnDuplicate = async (isbn) => {
   if (!isbn || isbn.length < 10) {
+    isbnDuplicate.value = false;
     return false;
   }
 
+  console.log('🔍 ISBN重複チェック開始:', isbn);
+
   try {
-    // データベースで重複チェック
+    // データベースで重複チェック（ISBNで完全一致検索）
     const response = await axios.get(`/api/books`, { 
       params: { 
         search: isbn,
-        per_page: 1
+        per_page: 100 // 検索結果を増やして確実にチェック
       } 
     });
     
+    console.log('📚 検索APIレスポンス:', response.data);
+    
     // 完全一致するISBNが存在するかチェック
     const books = response.data.data || [];
-    const duplicate = books.find(book => book.isbn === isbn);
+    console.log(`📖 取得した書籍数: ${books.length}`);
+    
+    // ISBNを正規化して比較（ハイフンを削除）
+    const normalizedIsbn = isbn.replace(/-/g, '');
+    console.log('🔢 正規化されたISBN:', normalizedIsbn);
+    
+    const duplicate = books.find(book => {
+      if (!book.isbn) return false;
+      const bookIsbn = book.isbn.replace(/-/g, '');
+      console.log(`  比較: ${bookIsbn} === ${normalizedIsbn}`, bookIsbn === normalizedIsbn);
+      return bookIsbn === normalizedIsbn;
+    });
     
     if (duplicate) {
       isbnSearchSuccess.value = false;
-      isbnSearchMessage.value = `⚠️ このISBNは既に登録されています（書籍ID: ${duplicate.id}, タイトル: ${duplicate.title}）`;
+      isbnDuplicate.value = true; // 重複フラグを立てる
+      isbnSearchMessage.value = `このISBNはすでに登録されています（タイトル: ${duplicate.title}）`;
+      console.log('✅ ISBN重複検出:', duplicate);
+      console.log('🚨 isbnDuplicate.value:', isbnDuplicate.value);
       return true;
     }
     
+    console.log('✓ 重複なし');
+    isbnDuplicate.value = false; // 重複なし
     return false;
   } catch (err) {
-    console.error('ISBN重複チェックエラー:', err);
+    console.error('❌ ISBN重複チェックエラー:', err);
+    isbnDuplicate.value = false;
     return false;
+  }
+};
+
+// ISBNフィールドのブラーイベントハンドラ
+const handleIsbnBlur = async (isbn) => {
+  console.log('👆 handleIsbnBlur呼び出し:', isbn);
+  
+  if (!isbn || isbn.length < 10) {
+    isbnSearchMessage.value = '';
+    isbnSearchSuccess.value = false;
+    isbnDuplicate.value = false;
+    return;
+  }
+
+  // まず重複チェック（ISBNとJANコード両方）
+  const isDuplicate = await checkIsbnDuplicate(isbn);
+  console.log('🔍 重複チェック結果:', isDuplicate);
+  console.log('🔍 isbnDuplicate.value:', isbnDuplicate.value);
+  
+  if (isDuplicate) {
+    // 重複している場合は検索を中止
+    console.log('🛑 重複検出のため検索を中止');
+    return;
+  }
+
+  // 重複していない場合、ISBN検索とJANコード検索を実行
+  // JANコードの場合はJANコード検索を優先
+  if (isbn.length === 13 && isbn.startsWith('938525')) {
+    console.log('📦 JANコード検索を実行');
+    await fetchBookByJanCode(isbn);
+  } else {
+    console.log('📚 ISBN検索を実行');
+    await fetchBookByIsbn(isbn);
   }
 };
 
@@ -140,13 +214,6 @@ const fetchBookByIsbn = async (isbn) => {
   isbnSearchMessage.value = 'ISBN検索中...';
   isbnSearchSuccess.value = false;
   generalError.value = '';
-
-  // まず重複チェック
-  const isDuplicate = await checkIsbnDuplicate(isbn);
-  if (isDuplicate) {
-    isbnSearching.value = false;
-    return;
-  }
 
   try {
     const response = await axios.get(`/api/books/search-by-isbn`, { params: { isbn } });
@@ -200,13 +267,6 @@ const fetchBookByJanCode = async (janCode) => {
   isbnSearchMessage.value = 'JANコード検索中...';
   isbnSearchSuccess.value = false;
   generalError.value = '';
-
-  // まず重複チェック
-  const isDuplicate = await checkIsbnDuplicate(janCode);
-  if (isDuplicate) {
-    isbnSearching.value = false;
-    return;
-  }
 
   try {
     const response = await axios.get(`/api/books/search-by-jan`, { params: { jan_code: janCode } });
@@ -263,6 +323,7 @@ const resetForm = () => {
   isbnSearching.value = false;
   isbnSearchMessage.value = '';
   isbnSearchSuccess.value = false;
+  isbnDuplicate.value = false;
 };
 
 const toggleNoIsbnMode = () => {
@@ -273,6 +334,7 @@ const toggleNoIsbnMode = () => {
     form.isbn = '';
     isbnSearchMessage.value = '';
     isbnSearchSuccess.value = false;
+    isbnDuplicate.value = false;
   }
 };
 
@@ -340,6 +402,20 @@ const submitForm = async () => {
 
 // ページマウント時にISBNフィールドにフォーカス
 onMounted(() => {
+  loadPermissions();
+  
+  // メールアドレスが数字で始まるかチェック（管理者以外の利用者の場合）
+  if (!userPermissions.value.isAdmin) {
+    const student = JSON.parse(localStorage.getItem('student') || '{}')
+    const email = student.email || ''
+    
+    // メールアドレスが数字以外で始まる場合、アクセス拒否
+    if (!/^[0-9]/.test(email)) {
+      generalError.value = 'この機能にアクセスする権限がありません'
+      return
+    }
+  }
+  
   nextTick(() => {
     const isbnInput = document.getElementById('isbn');
     if (isbnInput) {

@@ -168,7 +168,7 @@
 </template>
 
 <script>
-import { ref, reactive, computed } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import axios from 'axios'
 
@@ -178,6 +178,7 @@ export default {
     const router = useRouter()
     
     const form = reactive({
+      email: '',
       current_password: '',
       password: '',
       password_confirmation: ''
@@ -190,6 +191,20 @@ export default {
     const showNewPassword = ref(false)
     const showPasswordConfirm = ref(false)
 
+    // ログインユーザーのメールアドレスを取得
+    onMounted(() => {
+      try {
+        const student = JSON.parse(localStorage.getItem('student') || '{}')
+        if (student.email) {
+          form.email = student.email
+        } else {
+          error.value = 'ログイン情報が見つかりません。再度ログインしてください。'
+        }
+      } catch (e) {
+        error.value = 'ログイン情報の取得に失敗しました。'
+      }
+    })
+
     // パスワード一致チェック
     const passwordsMatch = computed(() => {
       if (!form.password || !form.password_confirmation) {
@@ -199,6 +214,11 @@ export default {
     })
 
     const handlePasswordChange = async () => {
+      if (!form.email) {
+        error.value = 'ログイン情報が見つかりません。再度ログインしてください。'
+        return
+      }
+
       if (!passwordsMatch.value) {
         error.value = '新しいパスワードが一致しません'
         return
@@ -213,7 +233,12 @@ export default {
         loading.value = true
         error.value = ''
 
-        const response = await axios.post('/api/change-password', form)
+        const response = await axios.post('/api/change-password', {
+          email: form.email,
+          current_password: form.current_password,
+          password: form.password,
+          password_confirmation: form.password_confirmation
+        })
         
         if (response.data.success) {
           success.value = true

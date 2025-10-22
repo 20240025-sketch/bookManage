@@ -73,8 +73,8 @@
         </router-link>
       </div>
 
-      <!-- 書籍登録 -->
-      <div class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+      <!-- 書籍登録 (メールアドレスが数字で始まる利用者または管理者のみ表示) -->
+      <div v-if="shouldShowBookRegistration" class="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
         <h2 class="text-lg font-semibold text-gray-900 mb-4">書籍登録</h2>
         <p class="text-gray-600 mb-4">
           新しい本を登録できます。
@@ -139,6 +139,17 @@ const shouldShowStudentInfo = computed(() => {
 
 // 貸出登録機能の表示判定（管理者は常にtrue、利用者はメールアドレスが数字で始まる場合のみ）
 const shouldShowBorrowFeature = computed(() => {
+  if (userPermissions.value.isAdmin) return true
+  
+  const student = JSON.parse(localStorage.getItem('student') || '{}')
+  const email = student.email || ''
+  
+  // メールアドレスが数字で始まる場合のみ表示
+  return /^[0-9]/.test(email)
+})
+
+// 書籍登録機能の表示判定（管理者は常にtrue、利用者はメールアドレスが数字で始まる場合のみ）
+const shouldShowBookRegistration = computed(() => {
   if (userPermissions.value.isAdmin) return true
   
   const student = JSON.parse(localStorage.getItem('student') || '{}')
