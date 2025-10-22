@@ -383,7 +383,7 @@ class BookController extends Controller
         ]);
     }
 
-    public function exportPdf(Request $request): Response
+    public function exportPdf(Request $request): Response|JsonResponse
     {
         try {
             $query = Book::query();

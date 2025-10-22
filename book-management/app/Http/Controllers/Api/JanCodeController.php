@@ -128,7 +128,7 @@ class JanCodeController extends Controller
     /**
      * TCPDFを使用したバーコードPDF生成
      */
-    private function generateSimpleBarcodePdf(string $janCode, string $bookTitle = null, string $bookAuthor = null): string
+    private function generateSimpleBarcodePdf(string $janCode, ?string $bookTitle = null, ?string $bookAuthor = null): string
     {
         try {
             // TCPDFを使用してPDFを生成
