@@ -174,6 +174,9 @@ class BookController extends Controller
                     ]);
             }
             
+            // リクエストされた本と一致するかチェックして通知を作成
+            $this->checkAndNotifyBookRequests($book);
+            
             DB::commit();
             
             return new BookResource($book);
@@ -1383,5 +1386,63 @@ class BookController extends Controller
             return $text;
         }
         return mb_substr($text, 0, $maxLength - 2) . '..';
+    }
+
+    /**
+     * リクエストされた本と一致するかチェックして通知を作成
+     */
+    private function checkAndNotifyBookRequests(Book $book): void
+    {
+        try {
+            Log::info("通知チェック開始: Book ID {$book->id}, Title: {$book->title}");
+            
+            // pending状態のリクエストを取得
+            $bookRequests = \App\Models\BookRequest::where('status', 'pending')
+                ->get();
+
+            Log::info("Pendingリクエスト数: " . $bookRequests->count());
+
+            foreach ($bookRequests as $request) {
+                Log::info("リクエストチェック: ID {$request->id}, Title: {$request->title}, Student ID: {$request->student_id}");
+                
+                // タイトルと著者で部分一致をチェック
+                $titleMatch = stripos($book->title, $request->title) !== false || 
+                              stripos($request->title, $book->title) !== false;
+                
+                $authorMatch = false;
+                if ($request->author && $book->author) {
+                    $authorMatch = stripos($book->author, $request->author) !== false || 
+                                   stripos($request->author, $book->author) !== false;
+                }
+
+                Log::info("マッチング結果: titleMatch={$titleMatch}, authorMatch={$authorMatch}");
+
+                // タイトルが一致、または（タイトルと著者の両方が一致）
+                if ($titleMatch && ($authorMatch || !$request->author)) {
+                    $message = "リクエストされた本「{$book->title}」が登録されました。";
+                    
+                    // 通知を作成（リクエストした人のstudent_idを含める）
+                    $notification = \App\Models\Notification::create([
+                        'student_id' => $request->student_id,
+                        'book_request_id' => $request->id,
+                        'book_id' => $book->id,
+                        'message' => $message,
+                        'is_read' => false
+                    ]);
+
+                    Log::info("通知を作成しました", [
+                        'notification_id' => $notification->id,
+                        'message' => $notification->message,
+                        'book_request_id' => $request->id,
+                        'book_id' => $book->id,
+                        'student_id' => $request->student_id
+                    ]);
+                }
+            }
+        } catch (\Exception $e) {
+            // 通知作成のエラーは本の登録自体には影響させない
+            Log::error('通知作成エラー: ' . $e->getMessage());
+            Log::error('スタックトレース: ' . $e->getTraceAsString());
+        }
     }
 }

@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class BookRequest extends Model
 {
     protected $fillable = [
+        'student_id',
         'title',
         'author',
         'requester_name',
@@ -26,6 +27,14 @@ class BookRequest extends Model
     public function student(): BelongsTo
     {
         return $this->belongsTo(Student::class);
+    }
+
+    /**
+     * Get the notifications for this request.
+     */
+    public function notifications()
+    {
+        return $this->hasMany(Notification::class);
     }
 
     /**

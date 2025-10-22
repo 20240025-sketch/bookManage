@@ -6,6 +6,7 @@ import StudentIndex from '@/pages/StudentIndex.vue';
 import BorrowCreate from '@/pages/BorrowCreate.vue';
 import Home from '@/pages/Home.vue';
 import BookRequests from '@/pages/BookRequests/Index.vue';
+import Notifications from '@/pages/Notifications.vue';
 
 const routes = [
     {
@@ -42,6 +43,11 @@ const routes = [
         path: '/book-requests',
         name: 'book-requests.index',
         component: BookRequests
+    },
+    {
+        path: '/notifications',
+        name: 'notifications.index',
+        component: Notifications
     }
 ];
 

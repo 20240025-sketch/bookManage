@@ -13,6 +13,7 @@ const BorrowStatus = () => import('../pages/BorrowStatus.vue')
 const UsageStatistics = () => import('../pages/UsageStatistics.vue')
 const LibraryDuty = () => import('../pages/LibraryDuty.vue')
 const BookRequestsIndex = () => import('../pages/BookRequests/Index.vue')
+const Notifications = () => import('../pages/Notifications.vue')
 const Login = () => import('../pages/Login.vue')
 const AdminLogin = () => import('../pages/AdminLogin.vue')
 const PasswordSetup = () => import('../pages/PasswordSetup.vue')
@@ -114,6 +115,12 @@ const routes = [
     name: 'BookRequestsIndex',
     component: BookRequestsIndex,
     meta: { title: '本のリクエスト', requiresAuth: true }
+  },
+  {
+    path: '/notifications',
+    name: 'Notifications',
+    component: Notifications,
+    meta: { title: '通知', requiresAuth: true }
   }
 ]
 

@@ -132,6 +132,27 @@
               <span class="text-xs font-medium text-center">本のリクエスト</span>
               <span class="text-xs text-gray-500 text-center">購入希望・要望</span>
             </router-link>
+
+            <!-- 通知 (全ユーザー利用可能) -->
+            <router-link 
+              to="/notifications" 
+              class="flex flex-col items-center px-4 py-3 min-w-0 flex-shrink-0 text-gray-700 hover:text-yellow-600 hover:bg-yellow-50 rounded-lg transition-all duration-200 relative"
+              :class="{ 'text-yellow-600 bg-yellow-50 border-b-2 border-yellow-600': $route.path === '/notifications' }"
+            >
+              <div class="relative">
+                <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"></path>
+                </svg>
+                <span 
+                  v-if="unreadCount > 0"
+                  class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold"
+                >
+                  {{ unreadCount > 9 ? '9+' : unreadCount }}
+                </span>
+              </div>
+              <span class="text-xs font-medium text-center">通知</span>
+              <span class="text-xs text-gray-500 text-center">お知らせ</span>
+            </router-link>
           </div>
         </div>
       </nav>
@@ -154,9 +175,11 @@
 import { computed, ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import AppHeader from './components/layouts/AppHeader.vue'
+import axios from 'axios'
 
 const route = useRoute()
 const isNavigationVisible = ref(true)
+const unreadCount = ref(0)
 
 // 権限管理
 const userPermissions = ref({
@@ -171,7 +194,7 @@ const userPermissions = ref({
 
 // 認証が必要なルートかどうかを判定
 const isAuthenticatedRoute = computed(() => {
-  const authRoutes = ['/books', '/students', '/borrows', '/borrow-status', '/usage-statistics', '/library-duty', '/book-requests', '/password-change']
+  const authRoutes = ['/books', '/students', '/borrows', '/borrow-status', '/usage-statistics', '/library-duty', '/book-requests', '/notifications', '/password-change']
   return authRoutes.some(authRoute => route.path.startsWith(authRoute))
 })
 
@@ -236,6 +259,23 @@ const shouldShowBookRegistration = computed(() => {
   return /^[0-9]/.test(email)
 })
 
+// 未読通知数を取得
+const fetchUnreadCount = async () => {
+  try {
+    const response = await axios.get('/api/notifications/unread-count')
+    unreadCount.value = response.data.count
+  } catch (error) {
+    // 401エラー（未認証）の場合は静かに0にする
+    if (error.response && error.response.status === 401) {
+      unreadCount.value = 0
+      console.log('未読数取得: 未認証のため0に設定')
+    } else {
+      console.error('未読数取得エラー:', error)
+      unreadCount.value = 0
+    }
+  }
+}
+
 // ページ読み込み時にナビゲーションの表示状態を復元
 onMounted(() => {
   const saved = localStorage.getItem('navigationVisible')
@@ -245,6 +285,12 @@ onMounted(() => {
   
   // 権限情報を読み込み
   loadPermissions()
+  
+  // 未読通知数を取得
+  fetchUnreadCount()
+  
+  // 1分ごとに未読数を更新
+  setInterval(fetchUnreadCount, 60000)
 })
 
 console.log('App.vue loaded successfully')

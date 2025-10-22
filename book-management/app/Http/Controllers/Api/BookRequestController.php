@@ -50,16 +50,36 @@ class BookRequestController extends Controller
     public function store(Request $request): JsonResponse
     {
         try {
+            // セッションから学生情報を取得
+            $student = session('student');
+            
+            Log::info('BookRequest作成: セッション情報', ['student' => $student]);
+            
+            if (!$student) {
+                Log::warning('BookRequest作成: セッションがありません');
+                return response()->json([
+                    'message' => '認証が必要です',
+                    'success' => false
+                ], 401);
+            }
+
+            $studentId = is_array($student) ? $student['id'] : $student->id;
+            Log::info("BookRequest作成: Student ID = {$studentId}");
+
             $validated = $request->validate([
                 'title' => 'required|string|max:255',
                 'author' => 'nullable|string|max:255',
                 'requester_name' => 'nullable|string|max:255',
             ]);
 
+            // student_idを追加してリクエストを作成
             $bookRequest = BookRequest::create([
                 ...$validated,
+                'student_id' => $studentId,
                 'status' => 'pending'
             ]);
+            
+            Log::info('BookRequest作成完了', ['id' => $bookRequest->id, 'student_id' => $bookRequest->student_id]);
 
             return response()->json([
                 'data' => $bookRequest,

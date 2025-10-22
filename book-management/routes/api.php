@@ -104,6 +104,13 @@ Route::middleware('web')->group(function () {
     Route::patch('book-requests/{bookRequest}/status', [BookRequestController::class, 'updateStatus']);
     Route::delete('book-requests/{bookRequest}', [BookRequestController::class, 'destroy']);
     
+    // 通知機能のルート
+    Route::get('notifications', [App\Http\Controllers\Api\NotificationController::class, 'index']);
+    Route::get('notifications/unread-count', [App\Http\Controllers\Api\NotificationController::class, 'unreadCount']);
+    Route::patch('notifications/{notification}/read', [App\Http\Controllers\Api\NotificationController::class, 'markAsRead']);
+    Route::patch('notifications/mark-all-read', [App\Http\Controllers\Api\NotificationController::class, 'markAllAsRead']);
+    Route::delete('notifications/{notification}', [App\Http\Controllers\Api\NotificationController::class, 'destroy']);
+    
     // JANコード生成のルート
     Route::post('generate-jan-code', [App\Http\Controllers\Api\JanCodeController::class, 'generateJanCode']);
     Route::post('generate-barcode-pdf', [App\Http\Controllers\Api\JanCodeController::class, 'generateBarcodePdf']);
