@@ -1405,9 +1405,44 @@ class BookController extends Controller
             foreach ($bookRequests as $request) {
                 Log::info("リクエストチェック: ID {$request->id}, Title: {$request->title}, Student ID: {$request->student_id}");
                 
-                // タイトルと著者で部分一致をチェック
-                $titleMatch = stripos($book->title, $request->title) !== false || 
-                              stripos($request->title, $book->title) !== false;
+                // タイトルのマッチングをゆるくする
+                // リクエストタイトルの一部が書籍タイトルに含まれているか
+                // または書籍タイトルの一部がリクエストタイトルに含まれているか
+                $titleMatch = false;
+                
+                // 基本的な部分一致チェック
+                if (stripos($book->title, $request->title) !== false || 
+                    stripos($request->title, $book->title) !== false) {
+                    $titleMatch = true;
+                } else {
+                    // スペースや記号で分割してキーワード単位でチェック
+                    $requestKeywords = preg_split('/[\s　、。・]+/u', $request->title, -1, PREG_SPLIT_NO_EMPTY);
+                    $bookKeywords = preg_split('/[\s　、。・]+/u', $book->title, -1, PREG_SPLIT_NO_EMPTY);
+                    
+                    // リクエストのキーワードのいずれかが書籍タイトルに含まれているか
+                    foreach ($requestKeywords as $keyword) {
+                        if (mb_strlen($keyword) >= 2) { // 2文字以上のキーワードのみ
+                            if (stripos($book->title, $keyword) !== false) {
+                                $titleMatch = true;
+                                Log::info("キーワードマッチ: '{$keyword}' が書籍タイトルに含まれています");
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // 書籍のキーワードのいずれかがリクエストタイトルに含まれているか
+                    if (!$titleMatch) {
+                        foreach ($bookKeywords as $keyword) {
+                            if (mb_strlen($keyword) >= 2) {
+                                if (stripos($request->title, $keyword) !== false) {
+                                    $titleMatch = true;
+                                    Log::info("キーワードマッチ: '{$keyword}' がリクエストタイトルに含まれています");
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
                 
                 $authorMatch = false;
                 if ($request->author && $book->author) {

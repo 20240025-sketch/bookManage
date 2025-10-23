@@ -50,20 +50,29 @@ class BookRequestController extends Controller
     public function store(Request $request): JsonResponse
     {
         try {
-            // セッションから学生情報を取得
-            $student = session('student');
+            Log::info('BookRequest作成開始', ['request_data' => $request->all()]);
             
-            Log::info('BookRequest作成: セッション情報', ['student' => $student]);
+            // student_idの取得: リクエストから直接、またはセッションから
+            $studentId = $request->input('student_id');
             
-            if (!$student) {
-                Log::warning('BookRequest作成: セッションがありません');
+            if (!$studentId) {
+                // リクエストにstudent_idがない場合、セッションから取得を試みる
+                $student = session('student');
+                Log::info('BookRequest作成: セッション情報', ['student' => $student]);
+                
+                if ($student) {
+                    $studentId = is_array($student) ? $student['id'] : $student->id;
+                }
+            }
+            
+            if (!$studentId) {
+                Log::warning('BookRequest作成: student_idが取得できません');
                 return response()->json([
-                    'message' => '認証が必要です',
+                    'message' => '学生情報が見つかりません。再ログインしてください。',
                     'success' => false
                 ], 401);
             }
-
-            $studentId = is_array($student) ? $student['id'] : $student->id;
+            
             Log::info("BookRequest作成: Student ID = {$studentId}");
 
             $validated = $request->validate([
@@ -95,8 +104,10 @@ class BookRequestController extends Controller
             ], 422);
         } catch (\Exception $e) {
             Log::error('Book request creation error: ' . $e->getMessage());
+            Log::error('Stack trace: ' . $e->getTraceAsString());
             return response()->json([
                 'message' => 'リクエストの登録に失敗しました',
+                'error' => $e->getMessage(),
                 'success' => false
             ], 500);
         }

@@ -20,9 +20,9 @@
       </div>
 
       <!-- 通知一覧 -->
-      <div v-if="notifications.length > 0" class="space-y-3">
+      <div v-if="validNotifications.length > 0" class="space-y-3">
         <div
-          v-for="notification in notifications"
+          v-for="notification in validNotifications"
           :key="notification.id"
           :class="[
             'p-4 rounded-lg border transition cursor-pointer',
@@ -34,17 +34,6 @@
         >
           <div class="flex justify-between items-start">
             <div class="flex-1">
-              <!-- デバッグ表示 -->
-              <div class="bg-red-100 border border-red-300 p-2 mb-2 text-xs">
-                <p><strong>DEBUG:</strong></p>
-                <p>ID: {{ notification.id }}</p>
-                <p>Message: "{{ notification.message }}"</p>
-                <p>Message exists: {{ !!notification.message }}</p>
-                <p>Message length: {{ notification.message ? notification.message.length : 0 }}</p>
-                <p>Book exists: {{ !!notification.book }}</p>
-                <p>JSON: {{ JSON.stringify(notification).substring(0, 200) }}</p>
-              </div>
-              
               <div class="flex items-center gap-2 mb-3">
                 <span v-if="!notification.is_read" class="text-blue-600 font-bold text-lg">●</span>
                 <p class="font-bold text-lg" style="color: #000000 !important; font-size: 18px;">
@@ -79,8 +68,13 @@
       </div>
 
       <!-- 通知がない場合 -->
-      <div v-else class="text-center py-12 text-gray-500">
+      <div v-else-if="notifications.length === 0" class="text-center py-12 text-gray-500">
         <p class="text-lg">通知はありません</p>
+      </div>
+      
+      <!-- 有効な通知がない場合 -->
+      <div v-else class="text-center py-12 text-gray-500">
+        <p class="text-lg">新しい通知はありません</p>
       </div>
     </div>
   </div>
@@ -92,8 +86,13 @@ import axios from 'axios';
 
 const notifications = ref([]);
 
+// book_idがある有効な通知のみをフィルター
+const validNotifications = computed(() => {
+  return notifications.value.filter(n => n.book_id !== null && n.book_id !== undefined);
+});
+
 const unreadCount = computed(() => {
-  return notifications.value.filter(n => !n.is_read).length;
+  return validNotifications.value.filter(n => !n.is_read).length;
 });
 
 onMounted(() => {
@@ -102,7 +101,20 @@ onMounted(() => {
 
 const fetchNotifications = async () => {
   try {
-    const response = await axios.get('/api/notifications');
+    const student = JSON.parse(localStorage.getItem('student') || '{}');
+    const studentId = student.id;
+    
+    console.log('🔍 Student ID from localStorage:', studentId);
+    
+    if (!studentId) {
+      console.warn('⚠️ Student IDが取得できませんでした');
+      return;
+    }
+    
+    const response = await axios.get('/api/notifications', {
+      params: { student_id: studentId }
+    });
+    
     console.log('📬 通知データ（完全）:', JSON.stringify(response.data, null, 2));
     console.log('📬 通知リスト:', response.data.data);
     notifications.value = response.data.data;

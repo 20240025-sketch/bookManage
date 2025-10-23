@@ -16,19 +16,32 @@ class NotificationController extends Controller
     public function index(Request $request): JsonResponse
     {
         try {
-            // セッションから学生情報を取得
-            $student = session('student');
+            // リクエストパラメータまたはセッションから学生情報を取得
+            $studentId = $request->query('student_id') ?? $request->input('student_id');
+            
+            if (!$studentId) {
+                $student = session('student');
+                if ($student) {
+                    $studentId = is_array($student) ? $student['id'] : $student->id;
+                }
+            }
+            
+            Log::info("通知取得リクエスト", [
+                'query_student_id' => $request->query('student_id'),
+                'input_student_id' => $request->input('student_id'),
+                'session_student' => session('student'),
+                'final_student_id' => $studentId
+            ]);
             
             // 認証されていない場合は空配列を返す（エラーにしない）
-            if (!$student) {
+            if (!$studentId) {
+                Log::warning("通知取得: Student IDが取得できませんでした");
                 return response()->json([
                     'data' => [],
                     'message' => '未認証',
                     'success' => true
                 ]);
             }
-
-            $studentId = is_array($student) ? $student['id'] : $student->id;
 
             Log::info("通知取得: Student ID = {$studentId}");
 
@@ -67,14 +80,21 @@ class NotificationController extends Controller
     /**
      * 未読通知数を取得
      */
-    public function unreadCount(): JsonResponse
+    public function unreadCount(Request $request): JsonResponse
     {
         try {
-            // セッションから学生情報を取得
-            $student = session('student');
+            // リクエストパラメータまたはセッションから学生情報を取得
+            $studentId = $request->query('student_id') ?? $request->input('student_id');
+            
+            if (!$studentId) {
+                $student = session('student');
+                if ($student) {
+                    $studentId = is_array($student) ? $student['id'] : $student->id;
+                }
+            }
             
             // 認証されていない場合は0を返す（エラーにしない）
-            if (!$student) {
+            if (!$studentId) {
                 return response()->json([
                     'count' => 0,
                     'success' => true,
@@ -82,12 +102,14 @@ class NotificationController extends Controller
                 ]);
             }
 
-            $studentId = is_array($student) ? $student['id'] : $student->id;
+            Log::info("未読通知数取得: Student ID = {$studentId}");
 
             // 現在のユーザーの未読通知数のみを取得
             $count = Notification::unread()
                 ->where('student_id', $studentId)
                 ->count();
+
+            Log::info("未読通知数: {$count}件");
 
             return response()->json([
                 'count' => $count,

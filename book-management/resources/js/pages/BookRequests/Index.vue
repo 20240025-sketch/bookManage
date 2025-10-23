@@ -233,7 +233,24 @@ const loadRequests = async () => {
 // 新規リクエストを送信
 const submitRequest = async () => {
   try {
-    const response = await axios.post('/api/book-requests', newRequest.value);
+    // localStorageから学生情報を取得
+    const student = JSON.parse(localStorage.getItem('student') || '{}');
+    const studentId = student.id;
+    
+    if (!studentId) {
+      alert('ログイン情報が見つかりません。再ログインしてください。');
+      return;
+    }
+    
+    // student_idを含めてリクエストを送信
+    const requestData = {
+      ...newRequest.value,
+      student_id: studentId
+    };
+    
+    console.log('リクエスト送信データ:', requestData);
+    
+    const response = await axios.post('/api/book-requests', requestData);
     if (response.data.success || response.data.data) {
       alert('リクエストを登録しました');
       await loadRequests(); // リスト更新
@@ -252,6 +269,7 @@ const submitRequest = async () => {
     }
   } catch (error) {
     console.error('Request error:', error);
+    console.error('エラー詳細:', error.response?.data);
     alert(error.response?.data?.message || 'リクエストの登録に失敗しました');
   }
 };

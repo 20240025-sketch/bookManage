@@ -262,8 +262,21 @@ const shouldShowBookRegistration = computed(() => {
 // 未読通知数を取得
 const fetchUnreadCount = async () => {
   try {
-    const response = await axios.get('/api/notifications/unread-count')
-    unreadCount.value = response.data.count
+    const student = JSON.parse(localStorage.getItem('student') || '{}');
+    const studentId = student.id;
+    
+    if (!studentId) {
+      console.log('未読数取得: Student IDがありません');
+      unreadCount.value = 0;
+      return;
+    }
+    
+    const response = await axios.get('/api/notifications/unread-count', {
+      params: { student_id: studentId }
+    });
+    
+    unreadCount.value = response.data.count;
+    console.log('✅ 未読通知数:', response.data.count);
   } catch (error) {
     // 401エラー（未認証）の場合は静かに0にする
     if (error.response && error.response.status === 401) {
