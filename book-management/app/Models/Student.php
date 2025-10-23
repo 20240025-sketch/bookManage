@@ -260,8 +260,12 @@ class Student extends Authenticatable
     }
 
     /**
-     * メールアドレスの最初の文字が数字かどうかで権限を判定
-     * 数字で始まる場合は利用者、そうでない場合は管理者
+     * メールアドレスで管理者権限を判定
+     * 条件：
+     * 1. @以降が seiei.ac.jp であること
+     * 2. メールアドレスが数字から始まらないこと
+     * 例: tttttt@seiei.ac.jp → 管理者
+     * 例: 1234567@seiei.ac.jp → 利用者
      */
     public function isAdmin(): bool
     {
@@ -274,7 +278,22 @@ class Student extends Authenticatable
             return false;
         }
         
-        $firstChar = substr($this->email, 0, 1);
+        // @で分割
+        $parts = explode('@', $this->email);
+        if (count($parts) !== 2) {
+            return false;
+        }
+        
+        $localPart = $parts[0]; // @の前
+        $domain = $parts[1];    // @の後
+        
+        // 条件1: ドメインが seiei.ac.jp であること
+        if ($domain !== 'seiei.ac.jp') {
+            return false;
+        }
+        
+        // 条件2: メールアドレス（@の前の部分）が数字から始まらないこと
+        $firstChar = substr($localPart, 0, 1);
         return !is_numeric($firstChar);
     }
 

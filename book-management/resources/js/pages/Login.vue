@@ -163,28 +163,28 @@ export default {
         if (response.data.success) {
           // ログイン成功
           console.log('ログイン成功:', response.data.student)
+          
+          // バックエンドから返された権限情報を使用
+          const permissions = response.data.permissions || {}
+          const isAdmin = permissions.isAdmin === true
+          
+          console.log('バックエンドの権限判定:', permissions)
+          
           localStorage.setItem('student', JSON.stringify(response.data.student))
           
-          // 通常ログインは利用者として設定
-          localStorage.setItem('isAdmin', 'false')
-          localStorage.setItem('userRole', 'user')
+          // バックエンドから返された権限情報をそのまま使用
+          localStorage.setItem('isAdmin', isAdmin ? 'true' : 'false')
+          localStorage.setItem('userRole', isAdmin ? 'admin' : 'user')
+          localStorage.setItem('userPermissions', JSON.stringify(permissions))
           
-          // 権限情報を保存（通常ログインは強制的にisAdmin=falseを設定）
-          const permissions = response.data.permissions || {}
-          const userPermissions = {
-            ...permissions,
-            isAdmin: false  // 通常ログインでは必ずfalseに設定
-          }
-          
-          console.log('権限情報を保存（利用者として制限）:', userPermissions)
-          localStorage.setItem('userPermissions', JSON.stringify(userPermissions))
+          console.log('権限情報を保存:', permissions)
           
           // グローバル権限更新関数が利用可能な場合は呼び出し
           if (window.updateUserPermissions) {
-            window.updateUserPermissions(userPermissions)
+            window.updateUserPermissions(permissions)
           }
           
-          console.log('localStorage設定完了（利用者としてログイン）')
+          console.log('localStorage設定完了、ログイン成功')
           
           // 強制的にページをリロードして書籍一覧に遷移
           console.log('書籍一覧ページに遷移します（window.location）')

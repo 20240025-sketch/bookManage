@@ -167,27 +167,33 @@ const handleAdminLogin = async () => {
     console.log('ログインAPIレスポンス:', response.data)
     
     if (response.data.success) {
-      // ログイン成功
-      console.log('ログイン成功:', response.data.student)
-      localStorage.setItem('student', JSON.stringify(response.data.student))
-      
-      // 管理者フラグを設定
-      localStorage.setItem('isAdmin', 'true')
-      localStorage.setItem('userRole', 'admin')
-      
-      // 権限情報を保存（管理者ログインは強制的にisAdmin=trueを設定）
+      // バックエンドから返された権限情報を確認
       const permissions = response.data.permissions || {}
-      const adminPermissions = {
-        ...permissions,
-        isAdmin: true  // 管理者ログインでは必ずtrueに設定
+      const isActuallyAdmin = permissions.isAdmin === true
+      
+      console.log('ログイン成功:', response.data.student)
+      console.log('バックエンドの権限判定:', permissions)
+      
+      // 実際に管理者でない場合はエラー
+      if (!isActuallyAdmin) {
+        error.value = 'このメールアドレスは管理者権限がありません。管理者条件: @seiei.ac.jp で数字から始まらないメールアドレス'
+        loading.value = false
+        return
       }
       
-      console.log('権限情報を保存（管理者として設定）:', adminPermissions)
-      localStorage.setItem('userPermissions', JSON.stringify(adminPermissions))
+      // ログイン成功（管理者として）
+      localStorage.setItem('student', JSON.stringify(response.data.student))
+      
+      // バックエンドから返された権限情報をそのまま使用
+      localStorage.setItem('isAdmin', 'true')
+      localStorage.setItem('userRole', 'admin')
+      localStorage.setItem('userPermissions', JSON.stringify(permissions))
+      
+      console.log('権限情報を保存:', permissions)
       
       // グローバル権限更新関数が利用可能な場合は呼び出し
       if (window.updateUserPermissions) {
-        window.updateUserPermissions(adminPermissions)
+        window.updateUserPermissions(permissions)
       }
       
       console.log('管理者としてログイン成功、蔵書管理システムに遷移します')

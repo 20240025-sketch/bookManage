@@ -34,8 +34,18 @@ class AuthController extends Controller
         $student = Student::where('email', $request->email)->first();
 
         if (!$student) {
-            // メールアドレスが数字で始まらない場合（管理者）は自動的にアカウントを作成
-            if (!is_numeric(substr($request->email, 0, 1))) {
+            // 管理者の条件を満たす場合は自動的にアカウントを作成
+            // 条件: 1. @以降が seiei.ac.jp, 2. メールアドレスが数字から始まらない
+            $parts = explode('@', $request->email);
+            $isAdminEmail = false;
+            
+            if (count($parts) === 2) {
+                $localPart = $parts[0];
+                $domain = $parts[1];
+                $isAdminEmail = ($domain === 'seiei.ac.jp' && !is_numeric(substr($localPart, 0, 1)));
+            }
+            
+            if ($isAdminEmail) {
                 // 管理者用の新規アカウントを作成
                 $student = new Student();
                 $student->email = $request->email;
@@ -140,8 +150,18 @@ class AuthController extends Controller
         $student = Student::where('email', $request->email)->first();
 
         if (!$student) {
-            // メールアドレスが数字で始まらない場合（管理者）は自動的にアカウントを作成
-            if (!is_numeric(substr($request->email, 0, 1))) {
+            // 管理者の条件を満たす場合は自動的にアカウントを作成
+            // 条件: 1. @以降が seiei.ac.jp, 2. メールアドレスが数字から始まらない
+            $parts = explode('@', $request->email);
+            $isAdminEmail = false;
+            
+            if (count($parts) === 2) {
+                $localPart = $parts[0];
+                $domain = $parts[1];
+                $isAdminEmail = ($domain === 'seiei.ac.jp' && !is_numeric(substr($localPart, 0, 1)));
+            }
+            
+            if ($isAdminEmail) {
                 // 管理者用の新規アカウントを作成
                 $student = new Student();
                 $student->email = $request->email;
