@@ -339,8 +339,9 @@
                     >
                       {{ book.is_borrowed ? '貸出中' : '貸出可能' }}
                     </span>
+                    <!-- 管理者のみ借りている人の名前を表示 -->
                     <span 
-                      v-if="book.is_borrowed && book.current_borrow?.student"
+                      v-if="userPermissions.isAdmin && book.is_borrowed && book.current_borrow?.student"
                       class="ml-2 text-xs text-gray-500"
                     >
                       （{{ book.current_borrow.student.grade }}年
