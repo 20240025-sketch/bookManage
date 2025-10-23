@@ -1,4 +1,73 @@
+# Book Management System
+
+図書管理システム - Laravel + Vue.js
+
+## セットアップ
+
+### 初回セットアップ
+
+```bash
+# 依存関係のインストール
+composer install
+npm install
+
+# データベースのマイグレーション
+php artisan migrate
+
+# 初期データの投入
+php artisan db:seed
+```
+
+## データベースシーダー
+
+### 現在のデータからシーダーを生成
+
+```bash
+# すべてのテーブルのシーダーを生成
+php artisan db:generate-seeders
+
+# 特定のテーブルのみ生成
+php artisan db:generate-seeders --tables=students --tables=books
+```
+
+生成されるシーダー：
+- `StudentSeeder.php` - 学生データ
+- `BookSeeder.php` - 書籍データ
+- `BorrowSeeder.php` - 貸出データ
+- `BookRequestSeeder.php` - 本のリクエストデータ
+
+### シーダーの実行
+
+```bash
+# すべてのシーダーを実行
+php artisan db:seed
+
+# 特定のシーダーのみ実行
+php artisan db:seed --class=StudentSeeder
+php artisan db:seed --class=BookSeeder
+```
+
+### データベースのリセットと再投入
+
+```bash
+# データベースを完全にリセットして再投入
+php artisan migrate:fresh --seed
+```
+
+## 開発
+
+```bash
+# フロントエンドの開発サーバー起動
+npm run dev
+
+# 本番ビルド
+npm run build
+```
+
+---
+
 <p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+
 
 <p align="center">
 <a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>

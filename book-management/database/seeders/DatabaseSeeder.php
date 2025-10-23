@@ -20,9 +20,13 @@ class DatabaseSeeder extends Seeder
             'email' => 'test@example.com',
         ]);
         
-        // クラス情報のシーディング
+        // データのシーディング
         $this->call([
             SchoolClassSeeder::class,
+            StudentSeeder::class,
+            BookSeeder::class,
+            BorrowSeeder::class,
+            BookRequestSeeder::class,
         ]);
     }
 }
