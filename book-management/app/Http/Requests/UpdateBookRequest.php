@@ -13,7 +13,9 @@ class UpdateBookRequest extends FormRequest
 
     public function rules(): array
     {
-        $bookId = $this->route('book'); // 更新対象のbook ID
+        // ルートモデルバインディングでBookオブジェクトが渡される場合とIDが渡される場合の両方に対応
+        $book = $this->route('book');
+        $bookId = $book instanceof \App\Models\Book ? $book->id : $book;
         
         return [
             'title' => 'required|string|max:255',
