@@ -5,7 +5,7 @@
       <AppHeader />
       
       <!-- メインナビゲーション -->
-      <nav class="bg-white shadow-lg border-b border-gray-200 fixed top-16 left-0 right-0 z-40">
+      <nav class="bg-white shadow-lg border-b border-gray-200 fixed top-16 left-0 right-0 z-40 transition-all duration-300">
         <div class="max-w-7xl mx-auto px-4">
           <!-- ナビゲーション切り替えボタン -->
           <div class="flex items-center justify-between py-2">
@@ -22,7 +22,11 @@
           </div>
           
           <!-- ナビゲーションメニュー -->
-          <div v-show="isNavigationVisible" class="flex space-x-2 overflow-x-auto py-3 border-t border-gray-100">
+          <div 
+            class="overflow-hidden transition-all duration-300 ease-in-out border-t border-gray-100"
+            :style="{ maxHeight: isNavigationVisible ? '500px' : '0px', opacity: isNavigationVisible ? '1' : '0' }"
+          >
+            <div class="flex space-x-2 overflow-x-auto py-3">
             <!-- 書籍一覧 -->
             <router-link 
               to="/books" 
@@ -153,11 +157,12 @@
               <span class="text-xs font-medium text-center">通知</span>
               <span class="text-xs text-gray-500 text-center">お知らせ</span>
             </router-link>
+            </div>
           </div>
         </div>
       </nav>
       
-      <main class="min-h-screen bg-gray-50" :class="isNavigationVisible ? 'pt-44' : 'pt-28'">
+      <main class="min-h-screen bg-gray-50 transition-all duration-300" :class="isNavigationVisible ? 'pt-56' : 'pt-32'">
         <div class="max-w-7xl mx-auto px-4 py-6">
           <router-view />
         </div>
