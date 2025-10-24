@@ -12,6 +12,7 @@ class LibraryDuty extends Model
 
     protected $fillable = [
         'duty_date',
+        'shift_type',
         'visitor_count',
         'borrow_count',
         'reflection',

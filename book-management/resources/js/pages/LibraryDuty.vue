@@ -6,7 +6,7 @@
         <div>
           <h1 class="text-2xl font-bold text-gray-900">図書当番</h1>
           <p class="mt-1 text-sm text-gray-600">
-            図書当番の記録を管理します
+            図書当番の記録を管理します（昼休み・放課後）
           </p>
         </div>
         <div class="flex items-center space-x-3">
@@ -60,6 +60,34 @@
           </svg>
           本日の記録（{{ formatDate(todayDuty.duty_date) }}）
         </h2>
+        
+        <!-- タブ切り替え -->
+        <div class="mb-6 border-b border-gray-200">
+          <nav class="-mb-px flex space-x-8">
+            <button
+              @click="currentShiftType = 'lunch'"
+              :class="[
+                currentShiftType === 'lunch'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+                'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm'
+              ]"
+            >
+              🍱 昼休み
+            </button>
+            <button
+              @click="currentShiftType = 'after_school'"
+              :class="[
+                currentShiftType === 'after_school'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+                'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm'
+              ]"
+            >
+              🌆 放課後
+            </button>
+          </nav>
+        </div>
         
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <!-- 利用者数入力 -->
@@ -159,6 +187,9 @@
                   日付
                 </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  時間帯
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   利用者数
                 </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -177,6 +208,18 @@
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {{ formatDate(duty.duty_date) }}
                 </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                  <span 
+                    :class="[
+                      'px-2 py-1 rounded-full text-xs font-medium',
+                      duty.shift_type === 'lunch' 
+                        ? 'bg-yellow-100 text-yellow-800' 
+                        : 'bg-purple-100 text-purple-800'
+                    ]"
+                  >
+                    {{ duty.shift_type === 'lunch' ? '🍱 昼休み' : '🌆 放課後' }}
+                  </span>
+                </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {{ duty.visitor_count }}人
                 </td>
@@ -193,7 +236,7 @@
                 </td>
               </tr>
               <tr v-if="pastDuties.length === 0">
-                <td colspan="5" class="px-6 py-8 text-center text-sm text-gray-500">
+                <td colspan="6" class="px-6 py-8 text-center text-sm text-gray-500">
                   過去の記録がありません
                 </td>
               </tr>
@@ -231,7 +274,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, computed, watch } from 'vue';
 import axios from 'axios';
 
 const loading = ref(true);
@@ -239,9 +282,13 @@ const saving = ref(false);
 const error = ref('');
 const successMessage = ref('');
 
+// 現在選択されている時間帯
+const currentShiftType = ref('lunch'); // 'lunch' または 'after_school'
+
 const todayDuty = ref({
   id: null,
   duty_date: null,
+  shift_type: 'lunch',
   visitor_count: 0,
   borrow_count: 0,
   reflection: '',
@@ -305,14 +352,15 @@ const formatDate = (dateString) => {
 };
 
 // 本日の記録を取得
-const loadTodayDuty = async () => {
+const loadTodayDuty = async (shiftType = 'lunch') => {
   try {
     const currentStudent = JSON.parse(localStorage.getItem('student') || '{}');
     
     axios.defaults.withCredentials = true;
     
     const params = {
-      current_user_email: currentStudent.email
+      current_user_email: currentStudent.email,
+      shift_type: shiftType
     };
     
     const response = await axios.get('/api/library-duty/today', { params });
@@ -329,6 +377,11 @@ const loadTodayDuty = async () => {
     }
   }
 };
+
+// 時間帯が変更されたら本日の記録を再取得
+watch(currentShiftType, async (newShiftType) => {
+  await loadTodayDuty(newShiftType);
+});
 
 // 過去の記録を取得
 const loadDuties = async (page = 1) => {
@@ -367,6 +420,7 @@ const saveTodayDuty = async () => {
       reflection: todayDuty.value.reflection,
       student_name_1: todayDuty.value.student_name_1,
       student_name_2: todayDuty.value.student_name_2,
+      shift_type: todayDuty.value.shift_type,
       current_user_email: currentStudent.email
     };
     
@@ -374,7 +428,7 @@ const saveTodayDuty = async () => {
     
     if (response.data.success) {
       todayDuty.value = response.data.data;
-      successMessage.value = '保存しました';
+      successMessage.value = `保存しました（${todayDuty.value.shift_type === 'lunch' ? '昼休み' : '放課後'}）`;
       
       // 過去の記録も更新
       await loadDuties(pagination.value.current_page);
@@ -459,6 +513,7 @@ onMounted(async () => {
 .line-clamp-2 {
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }

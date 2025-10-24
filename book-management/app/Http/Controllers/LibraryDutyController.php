@@ -89,16 +89,20 @@ class LibraryDutyController extends Controller
             }
             
             $today = Carbon::today();
+            $shiftType = $request->input('shift_type', 'lunch'); // デフォルトは昼休み
             
             // 本日の貸出人数を計算
             $borrowCount = Borrow::whereDate('borrowed_date', $today)->count();
             
-            // 本日の記録を取得または作成
-            $duty = LibraryDuty::whereDate('duty_date', $today)->first();
+            // 本日の指定された時間帯の記録を取得または作成
+            $duty = LibraryDuty::whereDate('duty_date', $today)
+                ->where('shift_type', $shiftType)
+                ->first();
             
             if (!$duty) {
                 $duty = LibraryDuty::create([
                     'duty_date' => $today->format('Y-m-d'),
+                    'shift_type' => $shiftType,
                     'visitor_count' => 0,
                     'borrow_count' => $borrowCount,
                     'reflection' => '',
@@ -155,7 +159,8 @@ class LibraryDutyController extends Controller
                 'visitor_count' => 'required|integer|min:0',
                 'reflection' => 'nullable|string',
                 'student_name_1' => 'nullable|string|max:255',
-                'student_name_2' => 'nullable|string|max:255'
+                'student_name_2' => 'nullable|string|max:255',
+                'shift_type' => 'nullable|in:lunch,after_school'
             ]);
             
             // 該当日の貸出人数を再計算
@@ -166,7 +171,8 @@ class LibraryDutyController extends Controller
                 'borrow_count' => $borrowCount,
                 'reflection' => $validated['reflection'] ?? '',
                 'student_name_1' => $validated['student_name_1'] ?? '',
-                'student_name_2' => $validated['student_name_2'] ?? ''
+                'student_name_2' => $validated['student_name_2'] ?? '',
+                'shift_type' => $validated['shift_type'] ?? $duty->shift_type
             ]);
             
             return response()->json([
