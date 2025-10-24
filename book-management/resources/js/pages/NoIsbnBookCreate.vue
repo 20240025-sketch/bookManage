@@ -320,7 +320,7 @@ const bookForm = reactive({
   quantity: 1,
   acceptance_date: '',
   acceptance_type: '購入',
-  acceptance_source: '文英堂',
+  acceptance_source: '文栄堂',
   storage_location: '図書室'
 });
 

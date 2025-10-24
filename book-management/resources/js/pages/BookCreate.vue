@@ -112,7 +112,7 @@ const form = reactive({
   quantity: 1,
   acceptance_date: '',
   acceptance_type: '購入',
-  acceptance_source: '文英堂',
+  acceptance_source: '文栄堂',
   discard: '',
   storage_location: '図書室'
 });
@@ -309,7 +309,7 @@ const resetForm = () => {
     } else if (key === 'acceptance_type') {
       form[key] = '購入'; // 受け入れ種別のデフォルト値
     } else if (key === 'acceptance_source') {
-      form[key] = '文英堂'; // 受け入れ元のデフォルト値
+      form[key] = '文栄堂'; // 受け入れ元のデフォルト値
     } else if (key === 'storage_location') {
       form[key] = '図書室'; // 保管場所のデフォルト値
     } else {

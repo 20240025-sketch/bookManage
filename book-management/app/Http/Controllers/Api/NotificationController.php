@@ -128,9 +128,30 @@ class NotificationController extends Controller
     /**
      * 通知を既読にする
      */
-    public function markAsRead(Notification $notification): JsonResponse
+    public function markAsRead(Request $request, Notification $notification): JsonResponse
     {
         try {
+            // リクエストボディから学生IDを取得
+            $studentId = $request->input('student_id');
+            
+            Log::info("既読処理リクエスト", [
+                'notification_id' => $notification->id,
+                'input_student_id' => $studentId,
+                'notification_student_id' => $notification->student_id
+            ]);
+            
+            // 自分の通知のみ既読にできる（セキュリティチェック）
+            if ($studentId && $notification->student_id && $notification->student_id != $studentId) {
+                Log::warning("既読処理: 権限なし", [
+                    'requested_by' => $studentId,
+                    'notification_owner' => $notification->student_id
+                ]);
+                return response()->json([
+                    'message' => 'この通知を既読にする権限がありません',
+                    'success' => false
+                ], 403);
+            }
+            
             $notification->markAsRead();
 
             return response()->json([
@@ -150,25 +171,39 @@ class NotificationController extends Controller
     /**
      * すべての通知を既読にする
      */
-    public function markAllAsRead(): JsonResponse
+    public function markAllAsRead(Request $request): JsonResponse
     {
         try {
-            // セッションから学生情報を取得
-            $student = session('student');
+            // リクエストボディまたはセッションから学生情報を取得
+            $studentId = $request->input('student_id');
             
-            if (!$student) {
+            if (!$studentId) {
+                $student = session('student');
+                if ($student) {
+                    $studentId = is_array($student) ? $student['id'] : $student->id;
+                }
+            }
+            
+            Log::info("一括既読処理リクエスト", [
+                'input_student_id' => $request->input('student_id'),
+                'session_student' => session('student'),
+                'final_student_id' => $studentId
+            ]);
+            
+            if (!$studentId) {
+                Log::warning("一括既読処理: Student IDが取得できませんでした");
                 return response()->json([
                     'message' => '認証が必要です',
                     'success' => false
                 ], 401);
             }
 
-            $studentId = is_array($student) ? $student['id'] : $student->id;
-
             // 現在のユーザーの未読通知のみを既読にする
             $updated = Notification::unread()
                 ->where('student_id', $studentId)
                 ->update(['is_read' => true]);
+
+            Log::info("一括既読処理完了: {$updated}件更新");
 
             return response()->json([
                 'count' => $updated,
@@ -187,9 +222,30 @@ class NotificationController extends Controller
     /**
      * 通知を削除
      */
-    public function destroy(Notification $notification): JsonResponse
+    public function destroy(Request $request, Notification $notification): JsonResponse
     {
         try {
+            // リクエストパラメータから学生IDを取得
+            $studentId = $request->query('student_id');
+            
+            Log::info("通知削除リクエスト", [
+                'notification_id' => $notification->id,
+                'input_student_id' => $studentId,
+                'notification_student_id' => $notification->student_id
+            ]);
+            
+            // 自分の通知のみ削除できる（セキュリティチェック）
+            if ($studentId && $notification->student_id && $notification->student_id != $studentId) {
+                Log::warning("通知削除: 権限なし", [
+                    'requested_by' => $studentId,
+                    'notification_owner' => $notification->student_id
+                ]);
+                return response()->json([
+                    'message' => 'この通知を削除する権限がありません',
+                    'success' => false
+                ], 403);
+            }
+            
             $notification->delete();
 
             return response()->json([

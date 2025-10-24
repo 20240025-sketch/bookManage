@@ -141,7 +141,12 @@ const markAsRead = async (notification) => {
   if (notification.is_read) return;
 
   try {
-    await axios.patch(`/api/notifications/${notification.id}/read`);
+    const student = JSON.parse(localStorage.getItem('student') || '{}');
+    const studentId = student.id;
+    
+    await axios.patch(`/api/notifications/${notification.id}/read`, {
+      student_id: studentId
+    });
     notification.is_read = true;
   } catch (error) {
     console.error('既読処理エラー:', error);
@@ -150,7 +155,17 @@ const markAsRead = async (notification) => {
 
 const markAllAsRead = async () => {
   try {
-    await axios.patch('/api/notifications/mark-all-read');
+    const student = JSON.parse(localStorage.getItem('student') || '{}');
+    const studentId = student.id;
+    
+    if (!studentId) {
+      console.error('⚠️ Student IDが取得できませんでした');
+      return;
+    }
+    
+    await axios.patch('/api/notifications/mark-all-read', {
+      student_id: studentId
+    });
     notifications.value.forEach(n => n.is_read = true);
   } catch (error) {
     console.error('一括既読処理エラー:', error);
@@ -161,7 +176,12 @@ const deleteNotification = async (notification) => {
   if (!confirm('この通知を削除しますか?')) return;
 
   try {
-    await axios.delete(`/api/notifications/${notification.id}`);
+    const student = JSON.parse(localStorage.getItem('student') || '{}');
+    const studentId = student.id;
+    
+    await axios.delete(`/api/notifications/${notification.id}`, {
+      params: { student_id: studentId }
+    });
     notifications.value = notifications.value.filter(n => n.id !== notification.id);
   } catch (error) {
     console.error('通知削除エラー:', error);
