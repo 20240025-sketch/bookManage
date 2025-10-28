@@ -264,6 +264,7 @@
                       class="hover:text-blue-600 transition-colors"
                     >
                       {{ book.title }}
+                      <span v-if="book.volume_number" class="text-gray-600 ml-1">（{{ book.volume_number }}）</span>
                     </router-link>
                   </h3>
                   <p v-if="book.title_transcription" class="text-sm text-gray-600 mb-2">{{ book.title_transcription }}</p>

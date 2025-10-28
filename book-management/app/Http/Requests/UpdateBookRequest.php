@@ -19,6 +19,7 @@ class UpdateBookRequest extends FormRequest
         
         return [
             'title' => 'required|string|max:255',
+            'volume_number' => 'nullable|string|max:50',
             'title_transcription' => 'nullable|string|max:255',
             'author' => 'nullable|string|max:255',
             'publisher' => 'nullable|string|max:255',
@@ -56,6 +57,7 @@ class UpdateBookRequest extends FormRequest
         return [
             'title.required' => 'タイトルは必須です。',
             'title.max' => 'タイトルは255文字以内で入力してください。',
+            'volume_number.max' => '巻数は50文字以内で入力してください。',
             'title_transcription.max' => 'タイトルのヨミは255文字以内で入力してください。',
             'author.max' => '著者は255文字以内で入力してください。',
             'published_date.date' => '出版日は正しい日付形式で入力してください。',

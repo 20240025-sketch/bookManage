@@ -72,6 +72,7 @@ const validationErrors = ref({});
 
 const form = reactive({
   title: '',
+  volume_number: '',
   title_transcription: '',
   author: '',
   publisher: '',

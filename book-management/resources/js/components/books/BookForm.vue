@@ -16,7 +16,27 @@
           :class="{ 'border-red-500': errors.title }"
           placeholder="書籍のタイトルを入力してください"
         >
-        <p v-if="errors.title" class="mt-1 text-sm text-red-600">{{ errors.title[0] }}</p>
+                <p v-if="errors.title" class="mt-1 text-sm text-red-600">{{ errors.title[0] }}</p>
+      </div>
+
+      <!-- 巻数 -->
+      <div>
+        <label for="volume_number" class="block text-sm font-medium text-gray-700 mb-2">
+          巻数
+        </label>
+        <input
+          id="volume_number"
+          v-model="form.volume_number"
+          type="text"
+          class="form-input"
+          :class="{ 'border-red-500': errors.volume_number }"
+          placeholder="第1巻、上巻など（任意）"
+        >
+        <p v-if="errors.volume_number" class="mt-1 text-sm text-red-600">{{ errors.volume_number[0] }}</p>
+      </div>
+
+      <!-- タイトルのヨミ -->
+      <div>
       </div>
 
       <!-- タイトルのヨミ -->

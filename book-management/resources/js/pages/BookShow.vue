@@ -26,7 +26,10 @@
       <div class="mb-6">
         <div class="flex items-center justify-between">
           <div>
-            <h1 class="text-2xl font-bold text-gray-900">{{ book.title }}</h1>
+            <h1 class="text-2xl font-bold text-gray-900">
+              {{ book.title }}
+              <span v-if="book.volume_number" class="text-xl text-gray-600 ml-2">（{{ book.volume_number }}）</span>
+            </h1>
             <p v-if="book.title_transcription" class="mt-1 text-lg text-gray-600">{{ book.title_transcription }}</p>
           </div>
           <div class="flex items-center space-x-3">

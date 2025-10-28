@@ -101,6 +101,7 @@ const noIsbnMode = ref(false);
 
 const form = reactive({
   title: '',
+  volume_number: '',
   title_transcription: '',
   author: '',
   publisher: '',
