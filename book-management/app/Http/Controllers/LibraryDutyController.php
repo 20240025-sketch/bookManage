@@ -43,8 +43,9 @@ class LibraryDutyController extends Controller
             // ページネーション設定
             $perPage = $request->get('per_page', 30);
             
-            // 図書当番記録を取得（最新順）
+            // 図書当番記録を取得（最新順、同日は昼休み→放課後の順）
             $duties = LibraryDuty::orderBy('duty_date', 'desc')
+                ->orderByRaw("CASE WHEN shift_type = 'lunch' THEN 1 WHEN shift_type = 'after_school' THEN 2 ELSE 3 END")
                 ->paginate($perPage);
             
             return response()->json([
@@ -191,6 +192,44 @@ class LibraryDutyController extends Controller
     }
     
     /**
+     * 図書当番記録を削除
+     */
+    public function destroy(Request $request, $id)
+    {
+        try {
+            // 認証チェック
+            $currentUser = Auth::user();
+            
+            if (!$currentUser && $request->has('current_user_email')) {
+                $email = $request->input('current_user_email');
+                $currentUser = Student::where('email', $email)->first();
+            }
+            
+            if (!$currentUser || !$currentUser->isAdmin()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'この機能は管理者のみ利用できます。'
+                ], 403);
+            }
+            
+            $duty = LibraryDuty::findOrFail($id);
+            $duty->delete();
+            
+            return response()->json([
+                'success' => true,
+                'message' => '削除しました'
+            ]);
+        } catch (\Exception $e) {
+            Log::error('LibraryDutyController destroy - Error: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => '削除に失敗しました。',
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
      * PDF出力
      */
     public function exportPdf(Request $request)
@@ -217,9 +256,19 @@ class LibraryDutyController extends Controller
             $startDate = $request->input('start_date', Carbon::now()->startOfMonth()->format('Y-m-d'));
             $endDate = $request->input('end_date', Carbon::now()->endOfMonth()->format('Y-m-d'));
             
+            // 時間帯指定（オプション）
+            $shiftType = $request->input('shift_type');
+            
             // 指定期間の記録を取得
-            $duties = LibraryDuty::whereBetween('duty_date', [$startDate, $endDate])
-                ->orderBy('duty_date', 'asc')
+            $query = LibraryDuty::whereBetween('duty_date', [$startDate, $endDate]);
+            
+            // 時間帯が指定されている場合はフィルタリング
+            if ($shiftType && in_array($shiftType, ['lunch', 'after_school'])) {
+                $query->where('shift_type', $shiftType);
+            }
+            
+            $duties = $query->orderBy('duty_date', 'asc')
+                ->orderByRaw("CASE WHEN shift_type = 'lunch' THEN 0 ELSE 1 END")
                 ->get();
             
             // 統計情報を計算
@@ -235,13 +284,15 @@ class LibraryDutyController extends Controller
                 'duties' => $duties,
                 'stats' => $stats,
                 'start_date' => $startDate,
-                'end_date' => $endDate
+                'end_date' => $endDate,
+                'shift_type' => $shiftType
             ];
             
             // PDF生成
             $pdf = \App\Services\LibraryDutyPdfService::generate($data);
             
-            $filename = '図書当番記録_' . date('Y年m月d日') . '.pdf';
+            $shiftLabel = $shiftType === 'lunch' ? '昼休み_' : ($shiftType === 'after_school' ? '放課後_' : '');
+            $filename = '図書当番記録_' . $shiftLabel . date('Y年m月d日') . '.pdf';
             
             return response($pdf, 200)
                 ->header('Content-Type', 'application/pdf')

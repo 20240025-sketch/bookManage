@@ -35,7 +35,11 @@ class LibraryDutyPdfService
         
         // タイトル
         $pdf->SetFont($fontName, 'B', 16);
-        $pdf->Cell(0, 10, '図書当番記録', 0, 1, 'C');
+        $shiftTypeLabel = '';
+        if (isset($data['shift_type'])) {
+            $shiftTypeLabel = $data['shift_type'] === 'lunch' ? '（昼休み）' : ($data['shift_type'] === 'after_school' ? '（放課後）' : '');
+        }
+        $pdf->Cell(0, 10, '図書当番記録' . $shiftTypeLabel, 0, 1, 'C');
         $pdf->SetFont($fontName, '', 10);
         
         // 期間
