@@ -703,6 +703,23 @@ class BookController extends Controller
                 }
             }
 
+            // タイトルフィルター
+            if ($request->filled('search_title')) {
+                $searchTitle = $request->search_title;
+                $query->where(function($q) use ($searchTitle) {
+                    $q->where('title', 'like', "%{$searchTitle}%")
+                      ->orWhere('title_transcription', 'like', "%{$searchTitle}%");
+                });
+                Log::info('PDF Title Filter Applied', ['filter' => $searchTitle]);
+            }
+
+            // 著者フィルター
+            if ($request->filled('search_author')) {
+                $searchAuthor = $request->search_author;
+                $query->where('author', 'like', "%{$searchAuthor}%");
+                Log::info('PDF Author Filter Applied', ['filter' => $searchAuthor]);
+            }
+
             // ISBNコード有無フィルター
             if ($request->filled('isbn_type')) {
                 $isbnType = $request->isbn_type;
@@ -924,6 +941,15 @@ class BookController extends Controller
             if ($request->filled('end_date')) {
                 $filterText .= date('Y年m月d日', strtotime($request->end_date));
             }
+            $filterText .= '　';
+        }
+        
+        if ($request->filled('search_title')) {
+            $filterText .= 'タイトル: ' . $request->search_title . '　';
+        }
+        
+        if ($request->filled('search_author')) {
+            $filterText .= '著者: ' . $request->search_author . '　';
         }
         
         if ($filterText) {

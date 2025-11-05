@@ -578,8 +578,15 @@ const exportPdf = async () => {
       params.append('isbn_type', filters.isbnType);
     }
 
-    // タイトル・著者フィルター（クライアントサイドフィルタリング）
-    const filteredData = filteredBooks.value;
+    // タイトルフィルター
+    if (filters.searchTitle) {
+      params.append('search_title', filters.searchTitle);
+    }
+
+    // 著者フィルター
+    if (filters.searchAuthor) {
+      params.append('search_author', filters.searchAuthor);
+    }
     
     const response = await axios.get('/api/books/pdf', {
       params: Object.fromEntries(params),

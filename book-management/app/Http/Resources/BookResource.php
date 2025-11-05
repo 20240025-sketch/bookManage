@@ -39,19 +39,34 @@ class BookResource extends JsonResource
                 return $borrow->returned_date === null;
             }),
             'borrow_history' => $this->borrows->map(function ($borrow) {
+                // 日付や生徒データが欠損している場合に備えて安全に処理
+                $borrowedDate = $borrow->borrowed_date ? $borrow->borrowed_date->format('Y-m-d') : null;
+                $returnedDate = $borrow->returned_date ? $borrow->returned_date->format('Y-m-d') : null;
+
+                $student = $borrow->student;
+                $studentData = $student ? [
+                    'id' => $student->id,
+                    'name' => $student->name,
+                    'grade' => $student->grade,
+                    'class' => $student->class
+                ] : null;
+
+                $duration = '貸出中';
+                if ($borrow->returned_date && $borrow->borrowed_date) {
+                    try {
+                        $duration = $borrow->borrowed_date->diffInDays($borrow->returned_date) . '日間';
+                    } catch (\Throwable $e) {
+                        // 計算できない場合は既定値を使う
+                        $duration = '不明';
+                    }
+                }
+
                 return [
                     'id' => $borrow->id,
-                    'borrowed_date' => $borrow->borrowed_date->format('Y-m-d'),
-                    'returned_date' => $borrow->returned_date ? $borrow->returned_date->format('Y-m-d') : null,
-                    'student' => [
-                        'id' => $borrow->student->id,
-                        'name' => $borrow->student->name,
-                        'grade' => $borrow->student->grade,
-                        'class' => $borrow->student->class
-                    ],
-                    'duration' => $borrow->returned_date 
-                        ? $borrow->borrowed_date->diffInDays($borrow->returned_date) . '日間'
-                        : '貸出中'
+                    'borrowed_date' => $borrowedDate,
+                    'returned_date' => $returnedDate,
+                    'student' => $studentData,
+                    'duration' => $duration
                 ];
             })->take(3),
             'created_at' => $this->created_at?->format('Y-m-d H:i:s'),
