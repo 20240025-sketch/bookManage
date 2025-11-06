@@ -1042,8 +1042,8 @@ class BookController extends Controller
         $pdf->SetFillColor(240, 240, 240);
         
         $headers = [
-            '受入年月日' => 25, 'タイトル' => 50, '著者' => 35, '出版社' => 30, '出版日' => 20,
-            'ページ数' => 15, '受入種別' => 20, '受入元' => 25, '価格' => 15, '図書分類' => 20
+            '受入年月日' => 25, 'タイトル' => 45, '巻数' => 12, '著者' => 33, '出版社' => 28, '出版日' => 20,
+            'ページ数' => 15, '受入種別' => 20, '受入元' => 22, '価格' => 15, '図書分類' => 20
         ];
 
         foreach ($headers as $header => $width) {
@@ -1064,8 +1064,8 @@ class BookController extends Controller
         
         // ヘッダー情報を取得（重複描画なし）
         $headers = [
-            '受入年月日' => 25, 'タイトル' => 50, '著者' => 35, '出版社' => 30, '出版日' => 20,
-            'ページ数' => 15, '受入種別' => 20, '受入元' => 25, '価格' => 15, '図書分類' => 20
+            '受入年月日' => 25, 'タイトル' => 45, '巻数' => 12, '著者' => 33, '出版社' => 28, '出版日' => 20,
+            'ページ数' => 15, '受入種別' => 20, '受入元' => 22, '価格' => 15, '図書分類' => 20
         ];
         $colWidths = array_values($headers);
 
@@ -1074,12 +1074,13 @@ class BookController extends Controller
             $tempRowData = [
                 '', // 受入年月日
                 $this->sanitizeText($book->title ?: ''),
+                '', // 巻数
                 $this->sanitizeText($book->author ?: ''),
                 $this->sanitizeText($book->publisher ?: ''),
                 '', '', '', '', '', '' // その他の列
             ];
             
-            $longTextColumns = [1, 2, 3]; // タイトル、著者、出版社
+            $longTextColumns = [1, 3, 4]; // タイトル、著者、出版社
             $maxLines = 1;
             
             foreach ($longTextColumns as $colIndex) {
@@ -1107,6 +1108,7 @@ class BookController extends Controller
             $rowData = [
                 $book->acceptance_date ? $book->acceptance_date->format('Y/m/d') : '',
                 $this->sanitizeText($book->title ?: ''),
+                $this->sanitizeText($book->volume_number ?: ''),
                 $this->sanitizeText($book->author ?: ''),
                 $this->sanitizeText($book->publisher ?: ''),
                 $book->published_date ? $book->published_date->format('Y/m/d') : '',
@@ -1118,7 +1120,7 @@ class BookController extends Controller
             ];
 
             // 複数行が必要な列（タイトル、著者、出版社）の高さを計算
-            $longTextColumns = [1, 2, 3]; // タイトル、著者、出版社のインデックス
+            $longTextColumns = [1, 3, 4]; // タイトル、著者、出版社のインデックス
             $maxLines = 1;
             
             foreach ($longTextColumns as $colIndex) {
