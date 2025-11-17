@@ -119,8 +119,9 @@ class BookController extends Controller
                   ->with('student'); // 生徒情報も一緒に取得
         }]);
 
-        // ページネーション
-        $books = $query->paginate(20);
+        // ページネーション（per_pageパラメータで制御可能、デフォルト1000件）
+        $perPage = $request->get('per_page', 1000);
+        $books = $query->paginate($perPage);
 
         Log::info('BookController index - Successfully loaded ' . $books->count() . ' books');
         return BookResource::collection($books);

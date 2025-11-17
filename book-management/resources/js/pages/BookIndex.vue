@@ -453,7 +453,9 @@ const loadBooks = async () => {
     // セッション認証のためのヘッダー設定を確認
     axios.defaults.withCredentials = true;
     console.log('BookIndex loadBooks - Starting API request');
-    const params = {};
+    const params = {
+      per_page: 10000 // 大きな値を指定して全件取得
+    };
     if (filters.startDate) params.start_date = filters.startDate;
     if (filters.endDate) params.end_date = filters.endDate;
     if (filters.ndc) params.ndc_category = filters.ndc;
