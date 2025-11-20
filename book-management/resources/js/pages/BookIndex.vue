@@ -231,14 +231,30 @@
           </div>
         </div>
 
-        <!-- 統計情報 -->
+        <!-- 統計情報と表示件数切り替え -->
         <div class="border-t border-gray-200 pt-4">
-          <div class="flex items-center justify-between text-sm text-gray-600">
-            <div>
+          <div class="flex items-center justify-between text-sm">
+            <div class="text-gray-600">
               全{{ books.length }}冊中 {{ filteredBooks.length }}冊を表示
               <span v-if="pagination.totalPages > 1" class="ml-2">
                 （ページ {{ pagination.currentPage }} / {{ pagination.totalPages }}）
               </span>
+            </div>
+            
+            <!-- 表示件数切り替え -->
+            <div v-if="filteredBooks.length > 25" class="flex items-center space-x-2">
+              <label class="text-gray-700 font-medium">表示件数:</label>
+              <select
+                v-model.number="pagination.perPage"
+                @change="changePerPage"
+                class="px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option :value="25">25件</option>
+                <option :value="50">50件</option>
+                <option :value="100">100件</option>
+                <option :value="200">200件</option>
+                <option :value="500">500件</option>
+              </select>
             </div>
           </div>
         </div>
@@ -666,6 +682,12 @@ const visiblePageNumbers = computed(() => {
 const applyFilters = () => {
   // フィルターが変更された時、ページを1にリセット
   pagination.currentPage = 1;
+};
+
+// 表示件数変更時の処理
+const changePerPage = () => {
+  pagination.currentPage = 1; // 1ページ目に戻す
+  window.scrollTo({ top: 0, behavior: 'smooth' }); // トップにスクロール
 };
 
 const clearFilters = () => {
