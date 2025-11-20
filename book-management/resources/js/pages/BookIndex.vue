@@ -236,6 +236,9 @@
           <div class="flex items-center justify-between text-sm text-gray-600">
             <div>
               全{{ books.length }}冊中 {{ filteredBooks.length }}冊を表示
+              <span v-if="pagination.totalPages > 1" class="ml-2">
+                （ページ {{ pagination.currentPage }} / {{ pagination.totalPages }}）
+              </span>
             </div>
           </div>
         </div>
@@ -248,9 +251,9 @@
       </div>
 
       <!-- 書籍一覧 -->
-      <div v-else-if="filteredBooks.length > 0" class="space-y-4">
+      <div v-else-if="paginatedBooks.length > 0" class="space-y-4">
         <div
-          v-for="book in filteredBooks"
+          v-for="book in paginatedBooks"
           :key="book.id"
           class="bg-white rounded-lg shadow hover:shadow-md transition-shadow p-6"
         >
@@ -380,8 +383,65 @@
         </div>
       </div>
 
+      <!-- ページネーション -->
+      <div v-if="paginatedBooks.length > 0 && pagination.totalPages > 1" class="mt-8">
+        <div class="flex items-center justify-center space-x-2">
+          <!-- 前へボタン -->
+          <button
+            @click="changePage(pagination.currentPage - 1)"
+            :disabled="pagination.currentPage === 1"
+            :class="[
+              'px-4 py-2 rounded-md transition-colors',
+              pagination.currentPage === 1
+                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+            ]"
+          >
+            前へ
+          </button>
+
+          <!-- ページ番号 -->
+          <template v-for="(page, index) in visiblePageNumbers" :key="index">
+            <span v-if="page === '...'" class="px-3 py-2 text-gray-500">
+              ...
+            </span>
+            <button
+              v-else
+              @click="changePage(page)"
+              :class="[
+                'px-4 py-2 rounded-md transition-colors',
+                pagination.currentPage === page
+                  ? 'bg-blue-500 text-white'
+                  : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+              ]"
+            >
+              {{ page }}
+            </button>
+          </template>
+
+          <!-- 次へボタン -->
+          <button
+            @click="changePage(pagination.currentPage + 1)"
+            :disabled="pagination.currentPage === pagination.totalPages"
+            :class="[
+              'px-4 py-2 rounded-md transition-colors',
+              pagination.currentPage === pagination.totalPages
+                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                : 'bg-white border border-gray-300 text-gray-700 hover:bg-gray-50'
+            ]"
+          >
+            次へ
+          </button>
+        </div>
+        
+        <!-- ページ情報 -->
+        <div class="text-center mt-4 text-sm text-gray-600">
+          {{ filteredBooks.length }}件中 {{ (pagination.currentPage - 1) * pagination.perPage + 1 }}〜{{ Math.min(pagination.currentPage * pagination.perPage, filteredBooks.length) }}件を表示
+        </div>
+      </div>
+
       <!-- 書籍なし -->
-      <div v-else class="text-center py-8">
+      <div v-else-if="!loading && filteredBooks.length === 0" class="text-center py-8">
         <svg class="w-16 h-16 text-gray-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
         </svg>
@@ -443,6 +503,13 @@ const filters = reactive({
   ndc: '',
   isbnType: '',
   storageLocation: ''
+});
+
+// ページネーション設定
+const pagination = reactive({
+  currentPage: 1,
+  perPage: 50, // 1ページあたり50冊表示
+  totalPages: 0
 });
 
 const loadBooks = async () => {
@@ -537,8 +604,68 @@ const hasActiveFilters = computed(() => {
   return filters.searchTitle || filters.searchAuthor || filters.startDate || filters.endDate || filters.ndc || filters.isbnType;
 });
 
+// ページネーション適用後の書籍リスト
+const paginatedBooks = computed(() => {
+  const filtered = filteredBooks.value;
+  const startIndex = (pagination.currentPage - 1) * pagination.perPage;
+  const endIndex = startIndex + pagination.perPage;
+  
+  // 総ページ数を更新
+  pagination.totalPages = Math.ceil(filtered.length / pagination.perPage);
+  
+  return filtered.slice(startIndex, endIndex);
+});
+
+// ページ変更
+const changePage = (page) => {
+  if (page >= 1 && page <= pagination.totalPages) {
+    pagination.currentPage = page;
+    // ページ変更時にトップにスクロール
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+};
+
+// ページネーションボタンの表示範囲を計算
+const visiblePageNumbers = computed(() => {
+  const current = pagination.currentPage;
+  const total = pagination.totalPages;
+  const delta = 2; // 現在のページの前後に表示するページ数
+  
+  let pages = [];
+  
+  // 最初のページは常に表示
+  if (total > 0) {
+    pages.push(1);
+  }
+  
+  // 現在のページ周辺のページ番号
+  for (let i = Math.max(2, current - delta); i <= Math.min(total - 1, current + delta); i++) {
+    pages.push(i);
+  }
+  
+  // 最後のページは常に表示
+  if (total > 1) {
+    pages.push(total);
+  }
+  
+  // 重複を削除してソート
+  pages = [...new Set(pages)].sort((a, b) => a - b);
+  
+  // 省略記号を挿入
+  const withEllipsis = [];
+  pages.forEach((page, index) => {
+    if (index > 0 && page - pages[index - 1] > 1) {
+      withEllipsis.push('...');
+    }
+    withEllipsis.push(page);
+  });
+  
+  return withEllipsis;
+});
+
 const applyFilters = () => {
-  // フィルターが変更された時の処理（リアクティブなのでcomputedが自動更新される）
+  // フィルターが変更された時、ページを1にリセット
+  pagination.currentPage = 1;
 };
 
 const clearFilters = () => {
@@ -549,6 +676,8 @@ const clearFilters = () => {
   filters.endDate = '';
   filters.ndc = '';
   filters.isbnType = '';
+  // フィルタークリア時もページをリセット
+  pagination.currentPage = 1;
 };
 
 const formatDate = (dateString) => {
@@ -660,10 +789,22 @@ onMounted(() => {
   loadBooks();
 });
 
+// フィルタが変更されたときにサーバーから再取得
 watch(
   [() => filters.startDate, () => filters.endDate, () => filters.ndc, () => filters.isbnType],
-  () => loadBooks(),
+  () => {
+    loadBooks();
+    pagination.currentPage = 1; // ページをリセット
+  },
   { deep: true }
+);
+
+// クライアントサイドフィルタ（タイトル・著者）が変更されたときにページをリセット
+watch(
+  [() => filters.searchTitle, () => filters.searchAuthor, () => filters.sortBy],
+  () => {
+    pagination.currentPage = 1;
+  }
 );
 
 console.log('BookIndex.vue loaded successfully');
