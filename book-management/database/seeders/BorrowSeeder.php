@@ -14,9 +14,9 @@ class BorrowSeeder extends Seeder
                 'id' => 402,
                 'book_id' => 1,
                 'student_id' => 3,
-                'borrowed_date' => 2025-09-19 00:00:00,
+                'borrowed_date' => '2025-09-19 00:00:00',
                 'return_due_date' => null,
-                'returned_date' => 2025-09-28 00:00:00,
+                'returned_date' => '2025-09-28 00:00:00',
             ],
             [
                 'id' => 403,

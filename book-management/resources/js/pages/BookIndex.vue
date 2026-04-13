@@ -156,6 +156,54 @@
         </div>
       </div>
 
+      <!-- 一括削除ツールバー -->
+      <div v-if="selectedBooks.size > 0" class="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center space-x-4">
+            <span class="text-sm font-medium text-gray-700">
+              {{ selectedBooks.size }}冊の書籍を選択しています
+            </span>
+            <div class="flex items-center space-x-2">
+              <button
+                @click="selectAllFiltered"
+                v-if="selectedBooks.size < filteredBooks.length"
+                class="text-sm text-blue-600 hover:text-blue-800 underline"
+              >
+                フィルタ結果をすべて選択
+              </button>
+              <button
+                @click="clearSelection"
+                class="text-sm text-gray-600 hover:text-gray-900 underline"
+              >
+                選択を解除
+              </button>
+            </div>
+          </div>
+          <button
+            @click="deleteSelectedBooks"
+            :disabled="isDeleting"
+            class="bg-red-500 hover:bg-red-600 disabled:bg-red-300 text-white px-4 py-2 rounded-md text-sm font-medium"
+          >
+            {{ isDeleting ? '削除中...' : '選択した書籍を削除' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- フィルタ時の一括選択ヒント -->
+      <div v-if="selectedBooks.size === 0 && filteredBooks.length > 0" class="mb-6 bg-gray-50 border border-gray-200 rounded-lg p-4">
+        <div class="flex items-center justify-between">
+          <span class="text-sm text-gray-600">
+            {{ filteredBooks.length }}冊が見つかりました
+          </span>
+          <button
+            @click="selectAllFiltered"
+            class="text-sm bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-md font-medium"
+          >
+            すべて選択
+          </button>
+        </div>
+      </div>
+
       <!-- エラー表示 -->
       <div v-if="error" class="mb-6 bg-red-50 border border-red-200 rounded-md p-4">
         <div class="flex">
@@ -272,29 +320,39 @@
           v-for="book in paginatedBooks"
           :key="book.id"
           class="bg-white rounded-lg shadow hover:shadow-md transition-shadow p-6"
+          :class="{ 'border-2 border-blue-400 bg-blue-50': selectedBooks.has(book.id) }"
         >
           <div class="flex items-start justify-between">
-            <div class="flex-1">
-              <div class="flex items-start justify-between mb-2">
-                <div>
-                  <h3 class="text-lg font-semibold text-gray-900 mb-1">
-                    <router-link
-                      :to="`/books/${book.id}`"
-                      class="hover:text-blue-600 transition-colors"
-                    >
-                      {{ book.title }}
-                      <span v-if="book.volume_number" class="text-gray-600 ml-1">（{{ book.volume_number }}）</span>
-                    </router-link>
-                  </h3>
-                  <p v-if="book.title_transcription" class="text-sm text-gray-600 mb-2">{{ book.title_transcription }}</p>
-                </div>
-              </div>
-
-              <div class="space-y-4">
-                <div class="grid grid-cols-1 md:grid-cols-5 gap-4 text-sm text-gray-600">
+            <!-- チェックボックス -->
+            <div class="flex items-start flex-1">
+              <input
+                type="checkbox"
+                :checked="selectedBooks.has(book.id)"
+                @change="toggleBookSelection(book)"
+                class="mt-1 w-5 h-5 text-blue-600 rounded cursor-pointer flex-shrink-0"
+                :title="selectedBooks.has(book.id) ? '選択を解除' : '選択'"
+              />
+              <div class="flex-1 ml-4">
+                <div class="flex items-start justify-between mb-2">
                   <div>
-                    <span class="font-medium">著者:</span> {{ book.author || '不明' }}
+                    <h3 class="text-lg font-semibold text-gray-900 mb-1">
+                      <router-link
+                        :to="`/books/${book.id}`"
+                        class="hover:text-blue-600 transition-colors"
+                      >
+                        {{ book.title }}
+                        <span v-if="book.volume_number" class="text-gray-600 ml-1">（{{ book.volume_number }}）</span>
+                      </router-link>
+                    </h3>
+                    <p v-if="book.title_transcription" class="text-sm text-gray-600 mb-2">{{ book.title_transcription }}</p>
                   </div>
+                </div>
+
+                <div class="space-y-4">
+                  <div class="grid grid-cols-1 md:grid-cols-5 gap-4 text-sm text-gray-600">
+                    <div>
+                      <span class="font-medium">著者:</span> {{ book.author || '不明' }}
+                    </div>
                   <div v-if="book.publisher">
                     <span class="font-medium">出版社:</span> {{ book.publisher }}
                   </div>
@@ -364,10 +422,11 @@
 
 
               </div>
+              </div>
             </div>
 
             <!-- 管理者のみ操作ボタンを表示 -->
-            <div v-if="userPermissions.isAdmin" class="flex items-center space-x-2 ml-4">
+            <div v-if="userPermissions.isAdmin" class="flex items-center space-x-2 ml-4 flex-shrink-0">
               <router-link
                 :to="`/books/${book.id}`"
                 class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm"
@@ -485,6 +544,10 @@ const books = ref([]);
 const loading = ref(true);
 const pdfExporting = ref(false);
 const error = ref('');
+
+// 複数選択機能
+const selectedBooks = ref(new Set());
+const isDeleting = ref(false);
 
 // 冊数編集関連
 const editingQuantity = ref({});
@@ -806,6 +869,65 @@ const saveQuantity = async (book) => {
   }
 };
 
+// 書籍選択の切り替え
+const toggleBookSelection = (book) => {
+  if (selectedBooks.value.has(book.id)) {
+    selectedBooks.value.delete(book.id);
+  } else {
+    selectedBooks.value.add(book.id);
+  }
+};
+
+// フィルタ結果をすべて選択
+const selectAllFiltered = () => {
+  filteredBooks.value.forEach(book => {
+    selectedBooks.value.add(book.id);
+  });
+};
+
+// 選択をすべて解除
+const clearSelection = () => {
+  selectedBooks.value.clear();
+};
+
+// 選択した書籍を削除
+const deleteSelectedBooks = async () => {
+  if (selectedBooks.value.size === 0) {
+    alert('削除する書籍を選択してください。');
+    return;
+  }
+
+  const confirmDelete = confirm(
+    `選択した${selectedBooks.value.size}冊の書籍を削除してもよろしいですか？この操作は取り消せません。`
+  );
+
+  if (!confirmDelete) return;
+
+  isDeleting.value = true;
+  
+  try {
+    const bookIds = Array.from(selectedBooks.value);
+    const response = await axios.post('/api/books/batch-destroy', {
+      book_ids: bookIds
+    });
+
+    if (response.data.success) {
+      // 削除成功 - 画面を再読み込み
+      alert(response.data.message);
+      selectedBooks.value.clear();
+      await loadBooks();
+      pagination.currentPage = 1;
+    } else {
+      alert('削除処理に失敗しました。');
+    }
+  } catch (err) {
+    console.error('Batch deletion error:', err);
+    alert('書籍の削除に失敗しました。もう一度お試しください。');
+  } finally {
+    isDeleting.value = false;
+  }
+};
+
 onMounted(() => {
   loadPermissions();
   loadBooks();
@@ -817,6 +939,7 @@ watch(
   () => {
     loadBooks();
     pagination.currentPage = 1; // ページをリセット
+    selectedBooks.value.clear(); // 選択をクリア
   },
   { deep: true }
 );
@@ -826,6 +949,7 @@ watch(
   [() => filters.searchTitle, () => filters.searchAuthor, () => filters.sortBy],
   () => {
     pagination.currentPage = 1;
+    selectedBooks.value.clear(); // 選択をクリア
   }
 );
 

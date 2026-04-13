@@ -25,8 +25,8 @@ class DatabaseSeeder extends Seeder
             SchoolClassSeeder::class,
             StudentSeeder::class,
             BookSeeder::class,
-            BorrowSeeder::class,
-            BookRequestSeeder::class,
+            // BorrowSeeder::class,
+            // BookRequestSeeder::class,
         ]);
     }
 }

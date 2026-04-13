@@ -67,6 +67,7 @@ Route::middleware('web')->group(function () {
     // 書籍管理のルート
     Route::get('books', [BookController::class, 'index']);
     Route::post('books', [BookController::class, 'store']);
+    Route::post('books/batch-destroy', [BookController::class, 'batchDestroy']);
     Route::get('books/pdf', [BookController::class, 'exportPdf']);
     Route::get('books/available', [BookController::class, 'available']);
     Route::post('books/search-isbn', [BookController::class, 'searchByISBN']);

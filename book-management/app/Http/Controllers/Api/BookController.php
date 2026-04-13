@@ -343,6 +343,74 @@ class BookController extends Controller
     }
 
     /**
+     * 複数の書籍を一括削除
+     */
+    public function batchDestroy(Request $request)
+    {
+        // 権限チェック: 書籍編集権限があるかどうか
+        /** @var Student|null $student */
+        $student = Auth::user();
+        
+        // 認証が失敗した場合はゲストユーザーとして動作
+        if (!$student) {
+            $student = new \App\Models\Student();
+            $student->id = 0;
+            $student->email = 'guest@system.local';
+            $student->name = 'Guest User';
+        }
+        
+        if (!$student->canEditBooks()) {
+            return response()->json([
+                'message' => 'この操作を行う権限がありません',
+                'success' => false
+            ], 403);
+        }
+
+        // バリデーション
+        $validated = $request->validate([
+            'book_ids' => 'required|array|min:1',
+            'book_ids.*' => 'required|integer|exists:books,id'
+        ]);
+
+        try {
+            $deletedCount = 0;
+            $failedCount = 0;
+            $failedBooks = [];
+
+            foreach ($validated['book_ids'] as $bookId) {
+                try {
+                    $book = Book::find($bookId);
+                    if ($book) {
+                        $book->delete();
+                        $deletedCount++;
+                    }
+                } catch (\Exception $e) {
+                    $failedCount++;
+                    $failedBooks[] = [
+                        'id' => $bookId,
+                        'error' => $e->getMessage()
+                    ];
+                    Log::error("Book deletion failed for ID {$bookId}: " . $e->getMessage());
+                }
+            }
+
+            return response()->json([
+                'message' => "{$deletedCount}冊の書籍を削除しました" . ($failedCount > 0 ? "（{$failedCount}冊の削除に失敗）" : ""),
+                'success' => true,
+                'deleted_count' => $deletedCount,
+                'failed_count' => $failedCount,
+                'failed_books' => $failedBooks
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Batch book deletion failed: ' . $e->getMessage());
+            return response()->json([
+                'message' => '書籍の一括削除に失敗しました',
+                'success' => false
+            ], 500);
+        }
+    }
+
+    /**
      * 本の貸出履歴を取得（ページネーション対応）
      */
     public function history(Request $request, Book $book)
