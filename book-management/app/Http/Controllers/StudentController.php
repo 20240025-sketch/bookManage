@@ -76,27 +76,47 @@ class StudentController extends Controller
         // 検索フィルター
         if ($request->filled('search')) {
             $search = $request->search;
+            Log::info('StudentController - Applying search filter:', ['search' => $search]);
             $query->where(function ($q) use ($search) {
                 $q->where('students.name', 'like', "%{$search}%")
                   ->orWhere('students.student_number', 'like', "%{$search}%");
             });
+            Log::info('StudentController - Search filter applied');
         }
 
         // 学年フィルター - classesテーブルを参照
         if ($request->filled('grade')) {
+            Log::info('StudentController - Applying grade filter:', ['grade' => $request->grade]);
             $query->byGrade($request->grade);
         }
 
         // 組フィルター - classesテーブルを参照
         if ($request->filled('class')) {
+            Log::info('StudentController - Applying class filter:', ['class' => $request->class]);
             // クラス名（name）でフィルタリング
             $query->whereHas('schoolClass', function ($q) use ($request) {
                 $q->where('classes.name', $request->class);
             });
         }
 
+        // ISBNフィルター - 指定されたISBNコードの本を借りている生徒のみを表示
+        if ($request->filled('isbn')) {
+            $isbn = $request->isbn;
+            Log::info('StudentController - Applying ISBN filter:', ['isbn' => $isbn]);
+            
+            // 指定されたISBNの本を借りている生徒を条件指定
+            $query->whereHas('borrows', function ($q) use ($isbn) {
+                $q->whereHas('book', function ($innerQ) use ($isbn) {
+                    $innerQ->where('isbn', 'like', "%{$isbn}%");
+                });
+            });
+            
+            Log::info('StudentController - ISBN filter applied');
+        }
+
         // 出席番号での検索（完全一致）
         if ($request->filled('student_number')) {
+            Log::info('StudentController - Applying student_number filter:', ['student_number' => $request->student_number]);
             $query->where('students.student_number', $request->student_number);
         }
 
@@ -106,6 +126,8 @@ class StudentController extends Controller
         // 学生番号の若い順にソート
         $students = $query->orderBy('student_number')
                          ->paginate($perPage);
+
+        Log::info('StudentController - Final query result:', ['count' => $students->count(), 'total' => $students->total()]);
 
         // アチーブメント情報とクラス情報を含むレスポンスデータを準備
         $studentsWithAchievements = $students->getCollection()->map(function ($student) {

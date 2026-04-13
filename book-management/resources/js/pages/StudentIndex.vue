@@ -129,9 +129,9 @@
       <p class="mt-2 text-gray-600">読み込み中...</p>
     </div>
 
-    <!-- 検索フィルター (管理者のみ) -->
-    <div v-if="userPermissions.isAdmin" class="bg-white rounded-lg shadow p-6 mb-6">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+    <!-- 検索フィルター -->
+    <div class="bg-white rounded-lg shadow p-6 mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div>
           <label for="searchName" class="block text-sm font-medium text-gray-700 mb-1">
             名前
@@ -146,6 +146,19 @@
           />
         </div>
         <div>
+          <label for="searchISBN" class="block text-sm font-medium text-gray-700 mb-1">
+            ISBNコード
+          </label>
+          <input
+            id="searchISBN"
+            v-model="filters.isbn"
+            @input="applyFilters"
+            type="text"
+            placeholder="ISBNコードを入力"
+            class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+          />
+        </div>
+        <div v-if="userPermissions.isAdmin">
           <label for="searchGradeClass" class="block text-sm font-medium text-gray-700 mb-1">
             学年・クラス
           </label>
@@ -852,7 +865,8 @@ const processingReturn = ref(false);
 
 const filters = ref({
   name: '',
-  gradeClass: ''
+  gradeClass: '',
+  isbn: ''
 });
 
 const availableGradeClasses = ref([]);
@@ -868,6 +882,7 @@ const form = ref({
 
 // フィルター変更時に生徒リストを再読み込み
 const applyFilters = () => {
+  console.log('applyFilters called with filters:', filters.value);
   loadStudents(1); // 1ページ目から開始
 };
 
@@ -1085,14 +1100,22 @@ const loadStudents = async (page = 1) => {
     // フィルター条件を追加
     if (filters.value.name) {
       params.search = filters.value.name;
+      console.log('Adding search filter:', filters.value.name);
     }
     
     if (filters.value.gradeClass) {
       const [grade, className] = filters.value.gradeClass.split('-');
       params.grade = grade;
       params.class = className;
+      console.log('Adding grade/class filters:', { grade, className });
     }
     
+    if (filters.value.isbn) {
+      params.isbn = filters.value.isbn;
+      console.log('Adding ISBN filter:', filters.value.isbn);
+    }
+    
+    console.log('Final request params:', params);
     const response = await axios.get('/api/students', { params });
     console.log('API Response:', response.data);
     console.log('Number of students returned:', response.data.data.length);
