@@ -14,12 +14,18 @@ class LibraryDuty extends Model
         'duty_date',
         'shift_type',
         'visitor_count',
+        'student_visitor_count',
+        'teacher_visitor_count',
         'borrow_count',
         'reflection',
         'student_id',
         'student_id_2',
         'student_name_1',
-        'student_name_2'
+        'student_name_2',
+        'grade_1',
+        'class_1',
+        'grade_2',
+        'class_2'
     ];
 
     protected $casts = [

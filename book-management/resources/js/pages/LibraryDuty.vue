@@ -47,14 +47,28 @@
           本日の記録：昼休み（{{ formatDate(todayLunchDuty.duty_date) }}）
         </h2>
         
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          <!-- 利用者数入力 -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <!-- 生徒利用者数 -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">
-              利用者数 *
+              生徒利用者数 *
             </label>
             <input
-              v-model.number="todayLunchDuty.visitor_count"
+              v-model.number="todayLunchDuty.student_visitor_count"
+              type="number"
+              min="0"
+              class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              placeholder="0"
+            />
+          </div>
+          
+          <!-- 教員利用者数 -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              教員利用者数 *
+            </label>
+            <input
+              v-model.number="todayLunchDuty.teacher_visitor_count"
               type="number"
               min="0"
               class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
@@ -74,7 +88,7 @@
         </div>
         
         <!-- 担当者入力 -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">
               担当者1
@@ -89,6 +103,32 @@
           
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">
+              学年1
+            </label>
+            <input
+              v-model="todayLunchDuty.grade_1"
+              type="text"
+              class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              placeholder="例：1年"
+            />
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              クラス1
+            </label>
+            <input
+              v-model="todayLunchDuty.class_1"
+              type="text"
+              class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              placeholder="例：A"
+            />
+          </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
               担当者2
             </label>
             <input
@@ -96,6 +136,30 @@
               type="text"
               class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               placeholder="担当者名を入力"
+            />
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              学年2
+            </label>
+            <input
+              v-model="todayLunchDuty.grade_2"
+              type="text"
+              class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              placeholder="例：1年"
+            />
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              クラス2
+            </label>
+            <input
+              v-model="todayLunchDuty.class_2"
+              type="text"
+              class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              placeholder="例：A"
             />
           </div>
         </div>
@@ -132,14 +196,28 @@
           本日の記録：放課後（{{ formatDate(todayAfterSchoolDuty.duty_date) }}）
         </h2>
         
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-          <!-- 利用者数入力 -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+          <!-- 生徒利用者数 -->
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">
-              利用者数 *
+              生徒利用者数 *
             </label>
             <input
-              v-model.number="todayAfterSchoolDuty.visitor_count"
+              v-model.number="todayAfterSchoolDuty.student_visitor_count"
+              type="number"
+              min="0"
+              class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              placeholder="0"
+            />
+          </div>
+          
+          <!-- 教員利用者数 -->
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              教員利用者数 *
+            </label>
+            <input
+              v-model.number="todayAfterSchoolDuty.teacher_visitor_count"
               type="number"
               min="0"
               class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
@@ -159,7 +237,7 @@
         </div>
         
         <!-- 担当者入力 -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">
               担当者1
@@ -174,6 +252,32 @@
           
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">
+              学年1
+            </label>
+            <input
+              v-model="todayAfterSchoolDuty.grade_1"
+              type="text"
+              class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              placeholder="例：1年"
+            />
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              クラス1
+            </label>
+            <input
+              v-model="todayAfterSchoolDuty.class_1"
+              type="text"
+              class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              placeholder="例：A"
+            />
+          </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
               担当者2
             </label>
             <input
@@ -181,6 +285,30 @@
               type="text"
               class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
               placeholder="担当者名を入力"
+            />
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              学年2
+            </label>
+            <input
+              v-model="todayAfterSchoolDuty.grade_2"
+              type="text"
+              class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              placeholder="例：1年"
+            />
+          </div>
+          
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">
+              クラス2
+            </label>
+            <input
+              v-model="todayAfterSchoolDuty.class_2"
+              type="text"
+              class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              placeholder="例：A"
             />
           </div>
         </div>
@@ -234,7 +362,10 @@
                   日付
                 </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  利用者数
+                  生徒利用者
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  教員利用者
                 </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   貸出人数
@@ -256,7 +387,10 @@
                   {{ formatDate(duty.duty_date) }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {{ duty.visitor_count }}人
+                  {{ duty.student_visitor_count }}人
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {{ duty.teacher_visitor_count }}人
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {{ duty.borrow_count }}人
@@ -318,7 +452,10 @@
                   日付
                 </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  利用者数
+                  生徒利用者
+                </th>
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  教員利用者
                 </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   貸出人数
@@ -340,7 +477,10 @@
                   {{ formatDate(duty.duty_date) }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {{ duty.visitor_count }}人
+                  {{ duty.student_visitor_count }}人
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  {{ duty.teacher_visitor_count }}人
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {{ duty.borrow_count }}人
@@ -411,8 +551,34 @@
             </div>
           </div>
           
-          <!-- 担当者 -->
+          <!-- 生徒利用者数と教員利用者数 -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">
+                生徒利用者数
+              </label>
+              <input
+                v-model.number="editingDuty.student_visitor_count"
+                type="number"
+                min="0"
+                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">
+                教員利用者数
+              </label>
+              <input
+                v-model.number="editingDuty.teacher_visitor_count"
+                type="number"
+                min="0"
+                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+          </div>
+          
+          <!-- 担当者1 -->
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">
                 担当者1
@@ -425,12 +591,60 @@
             </div>
             <div>
               <label class="block text-sm font-medium text-gray-700 mb-1">
+                学年1
+              </label>
+              <input
+                v-model="editingDuty.grade_1"
+                type="text"
+                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                placeholder="例：1年"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">
+                クラス1
+              </label>
+              <input
+                v-model="editingDuty.class_1"
+                type="text"
+                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                placeholder="例：A"
+              />
+            </div>
+          </div>
+          
+          <!-- 担当者2 -->
+          <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">
                 担当者2
               </label>
               <input
                 v-model="editingDuty.student_name_2"
                 type="text"
                 class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">
+                学年2
+              </label>
+              <input
+                v-model="editingDuty.grade_2"
+                type="text"
+                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                placeholder="例：1年"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">
+                クラス2
+              </label>
+              <input
+                v-model="editingDuty.class_2"
+                type="text"
+                class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                placeholder="例：A"
               />
             </div>
           </div>
@@ -519,10 +733,16 @@ const todayLunchDuty = ref({
   duty_date: null,
   shift_type: 'lunch',
   visitor_count: 0,
+  student_visitor_count: 0,
+  teacher_visitor_count: 0,
   borrow_count: 0,
   reflection: '',
   student_name_1: '',
-  student_name_2: ''
+  student_name_2: '',
+  grade_1: '',
+  class_1: '',
+  grade_2: '',
+  class_2: ''
 });
 
 const todayAfterSchoolDuty = ref({
@@ -530,13 +750,22 @@ const todayAfterSchoolDuty = ref({
   duty_date: null,
   shift_type: 'after_school',
   visitor_count: 0,
+  student_visitor_count: 0,
+  teacher_visitor_count: 0,
   borrow_count: 0,
   reflection: '',
   student_name_1: '',
-  student_name_2: ''
+  student_name_2: '',
+  grade_1: '',
+  class_1: '',
+  grade_2: '',
+  class_2: ''
 });
 
 const duties = ref([]);
+
+// 学年・クラス選択肢
+const availableGradeClasses = ref([]);
 
 // 昼休みのデータのみ（本日の編集用レコードは除外しない - 保存済みなら表示）
 const lunchDuties = computed(() => {
@@ -883,8 +1112,19 @@ const deleteDuty = async () => {
   }
 };
 
+// 学年・クラスの読み込み
+const loadGradeClasses = async () => {
+  try {
+    const response = await axios.get('/api/students/classes');
+    availableGradeClasses.value = response.data.data;
+  } catch (err) {
+    console.error('Error loading grade classes:', err);
+  }
+};
+
 onMounted(async () => {
   loadPermissions();
+  await loadGradeClasses();
   // 本日の両方の時間帯のデータをロード
   await Promise.all([
     loadTodayDuty('lunch'),

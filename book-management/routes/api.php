@@ -74,6 +74,9 @@ Route::middleware('web')->group(function () {
     Route::get('books/search-by-isbn', [BookController::class, 'searchByISBN']);
     Route::get('books/search-by-jan', [BookController::class, 'searchByJanCode']);
     Route::get('books/acceptance-sources', [BookController::class, 'getAcceptanceSources']);
+    Route::get('books/trash', [BookController::class, 'trash']);
+    Route::post('books/{id}/restore', [BookController::class, 'restore']);
+    Route::delete('books/{id}/permanent', [BookController::class, 'permanentDelete']);
     Route::get('books/{book}', [BookController::class, 'show']);
     Route::put('books/{book}', [BookController::class, 'update']);
     Route::delete('books/{book}', [BookController::class, 'destroy']);

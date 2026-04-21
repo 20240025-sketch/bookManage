@@ -124,6 +124,20 @@
               <span class="text-xs text-gray-500 text-center">記録管理</span>
             </router-link>
             
+            <!-- ゴミ箱 (管理者のみ) -->
+            <router-link 
+              v-if="userPermissions.isAdmin"
+              to="/trash" 
+              class="flex flex-col items-center px-4 py-3 min-w-0 flex-shrink-0 text-gray-700 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all duration-200"
+              :class="{ 'text-gray-600 bg-gray-100 border-b-2 border-gray-600': $route.path === '/trash' }"
+            >
+              <svg class="w-6 h-6 mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+              </svg>
+              <span class="text-xs font-medium text-center">ゴミ箱</span>
+              <span class="text-xs text-gray-500 text-center">削除管理</span>
+            </router-link>
+            
             <!-- 本のリクエスト (全ユーザー利用可能) -->
             <router-link 
               to="/book-requests" 

@@ -81,14 +81,14 @@ class BookController extends Controller
     }
 
     /**
-     * Remove the specified resource from storage.
+     * Remove the specified resource from storage (soft delete).
      */
     public function destroy(Book $book): JsonResponse
     {
         $book->delete();
 
         return response()->json([
-            'message' => 'Book deleted successfully'
+            'message' => 'Book moved to trash successfully'
         ]);
     }
 

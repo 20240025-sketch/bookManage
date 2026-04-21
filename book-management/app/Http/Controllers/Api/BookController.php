@@ -1642,4 +1642,44 @@ class BookController extends Controller
             Log::error('スタックトレース: ' . $e->getTraceAsString());
         }
     }
+
+    /**
+     * Get trashed books
+     */
+    public function trash()
+    {
+        $books = Book::onlyTrashed()->orderBy('deleted_at', 'desc')->get();
+        
+        return response()->json([
+            'data' => $books,
+            'message' => 'Trashed books retrieved successfully'
+        ]);
+    }
+
+    /**
+     * Restore a trashed book
+     */
+    public function restore(int $id)
+    {
+        $book = Book::onlyTrashed()->findOrFail($id);
+        $book->restore();
+
+        return response()->json([
+            'data' => $book,
+            'message' => 'Book restored successfully'
+        ]);
+    }
+
+    /**
+     * Permanently delete a trashed book
+     */
+    public function permanentDelete(int $id)
+    {
+        $book = Book::onlyTrashed()->findOrFail($id);
+        $book->forceDelete();
+
+        return response()->json([
+            'message' => 'Book permanently deleted'
+        ]);
+    }
 }

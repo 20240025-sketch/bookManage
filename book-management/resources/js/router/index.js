@@ -18,6 +18,7 @@ const Login = () => import('../pages/Login.vue')
 const AdminLogin = () => import('../pages/AdminLogin.vue')
 const PasswordSetup = () => import('../pages/PasswordSetup.vue')
 const PasswordChange = () => import('../pages/PasswordChange.vue')
+const Trash = () => import('../pages/Trash.vue')
 
 const routes = [
   {
@@ -79,6 +80,12 @@ const routes = [
     component: BookEdit,
     meta: { title: '書籍編集', requiresAuth: true },
     props: true
+  },
+  {
+    path: '/trash',
+    name: 'Trash',
+    component: Trash,
+    meta: { title: 'ゴミ箱', requiresAuth: true }
   },
   {
     path: '/students',
