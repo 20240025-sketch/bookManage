@@ -158,7 +158,7 @@
 
       <!-- 一括削除ツールバー -->
       <div v-if="selectedBooks.size > 0" class="mb-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <div class="flex items-center justify-between">
+        <div class="flex items-center justify-between flex-wrap gap-4">
           <div class="flex items-center space-x-4">
             <span class="text-sm font-medium text-gray-700">
               {{ selectedBooks.size }}冊の書籍を選択しています
@@ -179,13 +179,22 @@
               </button>
             </div>
           </div>
-          <button
-            @click="deleteSelectedBooks"
-            :disabled="isDeleting"
-            class="bg-red-500 hover:bg-red-600 disabled:bg-red-300 text-white px-4 py-2 rounded-md text-sm font-medium"
-          >
-            {{ isDeleting ? '削除中...' : '選択した書籍を削除' }}
-          </button>
+          <div class="flex items-center space-x-2">
+            <button
+              @click="generateSealLabels"
+              :disabled="isGeneratingSeal"
+              class="bg-green-500 hover:bg-green-600 disabled:bg-green-300 text-white px-4 py-2 rounded-md text-sm font-medium"
+            >
+              {{ isGeneratingSeal ? 'シール出力中...' : 'シール出力' }}
+            </button>
+            <button
+              @click="deleteSelectedBooks"
+              :disabled="isDeleting"
+              class="bg-red-500 hover:bg-red-600 disabled:bg-red-300 text-white px-4 py-2 rounded-md text-sm font-medium"
+            >
+              {{ isDeleting ? '削除中...' : '選択した書籍を削除' }}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -558,6 +567,7 @@ const error = ref('');
 // 複数選択機能
 const selectedBooks = ref(new Set());
 const isDeleting = ref(false);
+const isGeneratingSeal = ref(false);
 
 // 冊数編集関連
 const editingQuantity = ref({});
@@ -963,6 +973,42 @@ const deleteSelectedBooks = async () => {
     alert('書籍の削除に失敗しました。もう一度お試しください。');
   } finally {
     isDeleting.value = false;
+  }
+};
+
+// シール出力
+const generateSealLabels = async () => {
+  if (selectedBooks.value.size === 0) {
+    alert('シール出力する書籍を選択してください。');
+    return;
+  }
+
+  isGeneratingSeal.value = true;
+  
+  try {
+    const bookIds = Array.from(selectedBooks.value);
+    const response = await axios.post('/api/books/seal-labels', {
+      book_ids: bookIds
+    }, {
+      responseType: 'blob'
+    });
+
+    // PDF をダウンロード
+    const url = window.URL.createObjectURL(new Blob([response.data]));
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'book_seal_labels.pdf');
+    document.body.appendChild(link);
+    link.click();
+    link.parentNode.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    
+    alert('シール出力を完了しました。');
+  } catch (err) {
+    console.error('Seal label generation error:', err);
+    alert('シール出力に失敗しました。もう一度お試しください。');
+  } finally {
+    isGeneratingSeal.value = false;
   }
 };
 

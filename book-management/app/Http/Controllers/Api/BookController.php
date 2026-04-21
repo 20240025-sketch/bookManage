@@ -1682,4 +1682,116 @@ class BookController extends Controller
             'message' => 'Book permanently deleted'
         ]);
     }
+
+    /**
+     * Generate seal labels PDF - A4 standard 80-label format (10x8)
+     * Exactly matches saifuku.com standard library label template
+     */
+    public function generateSealLabels(Request $request)
+    {
+        $bookIds = $request->input('book_ids', []);
+        
+        if (empty($bookIds)) {
+            return response()->json(['message' => 'No books selected'], 400);
+        }
+
+        // 重複を排除してユニークな book_id のみを取得
+        $uniqueBookIds = array_unique($bookIds);
+        
+        $books = Book::whereIn('id', $uniqueBookIds)->get();
+
+        if ($books->isEmpty()) {
+            return response()->json(['message' => 'Books not found'], 404);
+        }
+
+        // TCPDF を使用して PDF を生成
+        $pdf = new \TCPDF('P', 'mm', 'A4');
+        $pdf->SetAutoPageBreak(false);
+        $pdf->SetMargins(5, 8, 5);  // 左右5mm、上下8mm
+        $pdf->AddPage();
+        
+        // A4: 210mm x 297mm
+        // 余白を考慮した印刷可能領域
+        $startX = 5;
+        $startY = 8;
+        $printableWidth = 210 - 10;     // 200mm
+        $printableHeight = 297 - 16;    // 281mm
+        
+        $cols = 10;
+        $rows = 8;
+        
+        // 各シール間に0.8mmのスペース
+        $spacing = 0.8;
+        
+        // スペースを除いた実領域
+        $contentWidth = $printableWidth - ($spacing * ($cols - 1));
+        $contentHeight = $printableHeight - ($spacing * ($rows - 1));
+        
+        // 1シール当たりの寸法（縦幅を小さくする）
+        $sealWidth = $contentWidth / $cols;      // 約 19.9mm
+        $sealHeight = $contentHeight / $rows;    // 約 31.4mm
+        
+        // 3分割（隙間なし）
+        $segmentHeight = $sealHeight / 3;
+        
+        $sealIndex = 0;
+        
+        foreach ($books as $book) {
+            if ($sealIndex >= 80) break;
+            
+            $row = intdiv($sealIndex, $cols);
+            $col = $sealIndex % $cols;
+            
+            // シール位置計算（スペースを含める）
+            $sealX = $startX + $col * ($sealWidth + $spacing);
+            $sealY = $startY + $row * ($sealHeight + $spacing);
+            
+            // === 外枠を描画（参考元の枠に合わせる） ===
+            $pdf->SetDrawColor(0, 0, 0);
+            $pdf->SetLineWidth(0.5);  // 外枠
+            $pdf->RoundedRect($sealX, $sealY, $sealWidth, $sealHeight, 0.3, '1111', 'D');
+            
+            // === 3分割の内部線を描画 ===
+            $pdf->SetLineWidth(0.3);  // 内部線
+            // 第1段と第2段の境界
+            $pdf->Line($sealX + 0.3, $sealY + $segmentHeight, $sealX + $sealWidth - 0.3, $sealY + $segmentHeight);
+            // 第2段と第3段の境界
+            $pdf->Line($sealX + 0.3, $sealY + 2 * $segmentHeight, $sealX + $sealWidth - 0.3, $sealY + 2 * $segmentHeight);
+            
+            // === 第1段：NDC（図書分類）===
+            $y1 = $sealY + 0.3;
+            $ndcText = $book->ndc ? substr(trim($book->ndc), 0, 6) : '';
+            if ($ndcText) {
+                $pdf->SetFont('helvetica', 'B', 13);
+                $pdf->SetTextColor(0, 0, 0);
+                $pdf->SetXY($sealX + 0.2, $y1 + 0.5);
+                $pdf->Cell($sealWidth - 0.4, $segmentHeight - 1, $ndcText, 0, 0, 'C', false);
+            }
+            
+            // === 第2段：著者の頭文字 ===
+            $y2 = $sealY + $segmentHeight + 0.3;
+            $authorInitial = '';
+            if ($book->author) {
+                $authorInitial = mb_substr(trim($book->author), 0, 1);
+            }
+            if ($authorInitial) {
+                $pdf->SetFont('helvetica', 'B', 12);
+                $pdf->SetTextColor(0, 0, 0);
+                $pdf->SetXY($sealX + 0.2, $y2 + 0.5);
+                $pdf->Cell($sealWidth - 0.4, $segmentHeight - 1, $authorInitial, 0, 0, 'C', false);
+            }
+            
+            // === 第3段：空白（記入欄）===
+            // 何もしない
+            
+            $sealIndex++;
+        }
+        
+        // PDF をメモリに出力
+        $pdfContent = $pdf->Output('', 'S');
+        
+        return response($pdfContent)
+            ->header('Content-Type', 'application/pdf')
+            ->header('Content-Disposition', 'attachment; filename="book_seal_labels.pdf"');
+    }
 }
