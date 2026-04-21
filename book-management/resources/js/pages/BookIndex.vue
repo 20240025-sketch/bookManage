@@ -363,6 +363,12 @@
                   <div v-if="book.storage_location">
                     <span class="font-medium">保管場所:</span> {{ book.storage_location }}
                   </div>
+                  <div v-if="book.ndc">
+                    <span class="font-medium">NDC:</span> {{ book.ndc }}
+                  </div>
+                  <div v-if="book.acceptance_date">
+                    <span class="font-medium">受け入れ年月日:</span> {{ formatDate(book.acceptance_date) }}
+                  </div>
                   <div>
                     <span class="font-medium">冊数:</span>
                     <span v-if="!editingQuantity[book.id]" class="inline-flex items-center gap-2">
