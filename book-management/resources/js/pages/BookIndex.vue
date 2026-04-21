@@ -1,5 +1,5 @@
 <template>
-  <div class="container mx-auto px-4 py-8">
+  <div ref="containerRef" class="container mx-auto px-4 py-8">
     <!-- フィルターセクション -->
     <div class="bg-white rounded-lg shadow p-6 mb-8">
       <div class="grid grid-cols-1 md:grid-cols-5 gap-6">
@@ -338,6 +338,7 @@
                     <h3 class="text-lg font-semibold text-gray-900 mb-1">
                       <router-link
                         :to="`/books/${book.id}`"
+                        @click="saveScrollPosition"
                         class="hover:text-blue-600 transition-colors"
                       >
                         {{ book.title }}
@@ -429,6 +430,7 @@
             <div v-if="userPermissions.isAdmin" class="flex items-center space-x-2 ml-4 flex-shrink-0">
               <router-link
                 :to="`/books/${book.id}`"
+                @click="saveScrollPosition"
                 class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded text-sm"
               >
                 詳細
@@ -537,9 +539,11 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted, watch } from 'vue';
+import { ref, reactive, computed, onMounted, onBeforeUnmount, watch } from 'vue';
+import { useRoute } from 'vue-router';
 import axios from 'axios';
 
+const route = useRoute();
 const books = ref([]);
 const loading = ref(true);
 const pdfExporting = ref(false);
@@ -552,6 +556,29 @@ const isDeleting = ref(false);
 // 冊数編集関連
 const editingQuantity = ref({});
 const tempQuantity = ref({});
+
+// スクロール位置保存関連
+const scrollPosition = ref(0);
+const containerRef = ref(null);
+
+// スクロール位置を保存する関数
+const saveScrollPosition = () => {
+  const pos = window.scrollY || document.documentElement.scrollTop;
+  console.log('Saving scroll position:', pos);
+  sessionStorage.setItem('bookListScrollPosition', pos.toString());
+};
+
+// スクロール位置を復元する関数
+const restoreScrollPosition = () => {
+  const savedPosition = sessionStorage.getItem('bookListScrollPosition');
+  if (savedPosition) {
+    const pos = parseInt(savedPosition);
+    console.log('Restoring scroll position:', pos);
+    setTimeout(() => {
+      window.scrollTo(0, pos);
+    }, 50);
+  }
+};
 
 // 権限管理
 const userPermissions = ref({
@@ -610,6 +637,11 @@ const loadBooks = async () => {
     
     const response = await axios.get('/api/books', { params });
     books.value = response.data.data || response.data;
+    
+    // データ読み込み完了後にスクロール位置を復元
+    setTimeout(() => {
+      restoreScrollPosition();
+    }, 50);
   } catch (err) {
     console.error('BookIndex loadBooks error:', err);
     if (err.response) {
@@ -929,8 +961,15 @@ const deleteSelectedBooks = async () => {
 };
 
 onMounted(() => {
+  console.log('BookIndex mounted');
   loadPermissions();
   loadBooks();
+  // loadBooks内でスクロール復元が行われるため、ここでは不要
+});
+
+onBeforeUnmount(() => {
+  // ページから離脱する際はスクロール位置を保存しない
+  // （router-link クリック時に既に saveScrollPosition() が呼ばれている）
 });
 
 // フィルタが変更されたときにサーバーから再取得
