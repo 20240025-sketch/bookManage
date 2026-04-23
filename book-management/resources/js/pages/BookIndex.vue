@@ -188,6 +188,7 @@
               {{ isGeneratingSeal ? 'シール出力中...' : 'シール出力' }}
             </button>
             <button
+              v-if="userPermissions.isAdmin"
               @click="deleteSelectedBooks"
               :disabled="isDeleting"
               class="bg-red-500 hover:bg-red-600 disabled:bg-red-300 text-white px-4 py-2 rounded-md text-sm font-medium"

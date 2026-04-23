@@ -9,8 +9,14 @@
             {{ userPermissions.isAdmin ? '登録されている生徒の一覧を表示します' : '自分の生徒情報を確認できます' }}
           </p>
         </div>
-        <!-- 管理者のみ新規登録ボタンを表示 -->
+        <!-- 管理者のみ新規登録・年度更新ボタンを表示 -->
         <div v-if="userPermissions.isAdmin" class="flex items-center space-x-3">
+          <button
+            @click="showYearUpdateConfirm"
+            class="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-md"
+          >
+            📅 年度更新
+          </button>
           <button
             @click="showCreateModal = true"
             class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md"
@@ -1374,6 +1380,35 @@ const getDaysUntilDue = (dueDate) => {
   const diffTime = due - today;
   const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   return diffDays;
+};
+
+// 年度更新確認ダイアログを表示
+const showYearUpdateConfirm = () => {
+  const message = `全ての生徒の学年を1つ上げます。\n\n1年 → 2年\n2年 → 3年\n3年 → 卒業（削除）\n\nこの操作は取り消せません。よろしいですか？`;
+  if (confirm(message)) {
+    performYearUpdate();
+  }
+};
+
+// 年度更新を実行
+const performYearUpdate = async () => {
+  try {
+    loading.value = true;
+    error.value = '';
+    
+    const response = await axios.post('/api/students/year-update');
+    
+    if (response.status === 200) {
+      alert('年度更新が完了しました。');
+      // 生徒一覧を再読み込み
+      loadStudents();
+    }
+  } catch (err) {
+    error.value = err.response?.data?.message || '年度更新に失敗しました。';
+    console.error('年度更新エラー:', err);
+  } finally {
+    loading.value = false;
+  }
 };
 
 // コンポーネントのマウント時に生徒一覧を取得
